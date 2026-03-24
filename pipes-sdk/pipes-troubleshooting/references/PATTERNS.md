@@ -737,21 +737,6 @@ format: "JSONEachRow"
 // Use implementation ABI, not proxy ABI
 ```
 
-## Detailed Reference Documents
-
-For comprehensive examples and code, refer to these files in the pipes-patterns skill:
-
-1. **EVM_PATTERNS.md** - 9+ validated EVM indexing patterns with complete code examples
-2. **TROUBLESHOOTING.md** - Complete error catalog with step-by-step solutions
-3. **PERFORMANCE.md** - Detailed throughput benchmarks and profiling guide
-4. **DEX_DATA_PIPES_PATTERNS.md** - Production DEX indexing patterns
-5. **SOLANA_PATTERNS.md** - Solana-specific patterns and instruction discriminators
-
-Access via:
-```bash
-cat pipes-sdk/pipes-patterns/references/EVM_PATTERNS.md
-```
-
 ## Key Takeaways
 
 1. **Start with proven patterns** - Use validated patterns from reference docs
