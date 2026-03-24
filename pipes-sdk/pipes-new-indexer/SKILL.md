@@ -5,7 +5,7 @@ compatibility: Requires npm/npx for @iankressin/pipes-cli
 allowed-tools: [Bash, Read, Write]
 metadata:
   author: subsquid
-  version: "2.0.0"
+  version: "3.0.0"
   category: core
 ---
 
@@ -1417,7 +1417,7 @@ Many DeFi protocols are forks of well-known codebases. Recognizing forks saves t
 
 ## Related Skills
 
-- See ENVIRONMENT_SETUP.md for setup verification - Verify environment first
+- [ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md) - Verify environment first
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix issues
 - [DEPLOYMENT.md](references/DEPLOYMENT.md) - Local and cloud deployment
 

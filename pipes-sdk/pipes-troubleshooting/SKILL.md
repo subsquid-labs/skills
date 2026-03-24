@@ -1,10 +1,10 @@
 ---
 name: pipes-troubleshooting
 description: Diagnoses and fixes runtime errors in blockchain indexers. Handles compilation errors, database issues, Portal API failures, and data quality problems.
-allowed-tools: [Read, Edit, Grep, Bash, BashOutput]
+allowed-tools: [Read, Edit, Grep, Bash]
 metadata:
   author: subsquid
-  version: "1.0.0"
+  version: "3.0.0"
   category: core
 ---
 
@@ -28,7 +28,7 @@ Activate when:
 
 ## Important Note
 
-Before diagnosing errors, check if the user followed the mandatory workflow in pipes-workflow skill. Many errors are caused by skipping documentation and not using proper setup procedures.
+Before diagnosing errors, check if the user followed the mandatory workflow in pipes-new-indexer skill. Many errors are caused by skipping documentation and not using proper setup procedures.
 
 ## Diagnostic Checklist
 
@@ -60,7 +60,7 @@ If indexer is currently running:
 ps aux | grep "npm run dev\|tsx src/index.ts\|node"
 
 # Check output if running in background
-# Use BashOutput tool with bash_id
+# Use Bash tool with bash_id
 ```
 
 ### 3. Read Error Context
@@ -69,7 +69,7 @@ Always read the relevant files:
 - `src/index.ts` - Main pipeline code
 - `package.json` - Dependency versions
 - `.env` - Connection strings
-- Error stack traces from BashOutput
+- Error stack traces from Bash
 
 ## Common Error Patterns
 

@@ -54,7 +54,7 @@ Use these benchmarks from production indexers:
 ### 4. Check Running Indexer
 
 If indexer is currently running:
-- Use BashOutput to check progress
+- Use Bash to check progress
 - Calculate current blocks/sec
 - Estimate time remaining
 - Identify if it's stuck
@@ -192,7 +192,7 @@ If indexer is currently running, check:
 ps aux | grep "npm run dev\|tsx src/index.ts"
 
 # Monitor output (if running in background)
-# Use BashOutput tool with the bash_id
+# Use Bash tool with the bash_id
 ```
 
 Look for:

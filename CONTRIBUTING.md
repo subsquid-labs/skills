@@ -7,10 +7,13 @@ Contributions to improve existing skills or add new skills are welcome.
 ### 1. Create the skill directory
 
 ```bash
-mkdir -p skills/pipes-{skill-name}
+mkdir -p {product}/{skill-name}
+# Examples:
+#   pipes-sdk/pipes-new-feature
+#   portal/portal-new-feature
 ```
 
-Use `kebab-case` with the `pipes-` prefix for the directory name.
+Use `kebab-case` with a product prefix (`pipes-`, `portal-`, etc.) for the directory name.
 
 ### 2. Create SKILL.md
 
@@ -18,17 +21,17 @@ Follow this template:
 
 ```markdown
 ---
-name: pipes-{skill-name}
+name: {skill-name}
 description: {One sentence describing what the skill does}
 compatibility: {Optional: environment requirements}
 allowed-tools: [{Optional: space-delimited list}]
 metadata:
   author: subsquid
   version: "1.0.0"
-  category: {core|deployment|research|template|documentation}
+  category: {core|template|documentation}
 ---
 
-# Pipes: {Skill Title}
+# {Product}: {Skill Title}
 
 {Brief description}
 
@@ -38,16 +41,14 @@ metadata:
 
 ## {Additional sections as needed}
 
-## Related Skills
+## Related Documentation
 
-- [pipes-related](../pipes-related/SKILL.md) - Description
+- [{reference}](references/{reference}.md) - Description
 ```
 
 ### 3. Choose the correct category
 
-- **core**: Main operational skills (creation, debugging, validation, setup)
-- **deployment**: Platform deployment skills (ClickHouse Cloud, Railway, local)
-- **research**: Discovery and analysis skills (ABIs, contracts, protocols, schemas)
+- **core**: Main operational skills (creation, debugging, querying, deployment)
 - **template**: Code templates for common patterns
 - **documentation**: Workflow guides and best practices
 
@@ -55,27 +56,26 @@ metadata:
 
 - `scripts/` - Executable helper scripts
 - `references/` - Supporting documentation
-- `templates/` - Code templates (for template skills)
 
 ### 5. Update README.md
 
-Add your skill to the Available Skills table with the correct category.
+Add your skill to the relevant product README (`pipes-sdk/README.md` or `portal/README.md`).
 
 ### 6. Validate
 
 ```bash
 # Check YAML frontmatter
-head -20 skills/pipes-{skill-name}/SKILL.md
+head -20 {product}/{skill-name}/SKILL.md
 
 # Validate with skills-ref (if available)
-skills-ref validate ./skills/pipes-{skill-name}
+skills-ref validate ./{product}/{skill-name}
 ```
 
 ## Guidelines
 
 ### Keep Skills Focused
 
-Each skill should do one thing well. If a skill is becoming too large, consider splitting it into multiple skills.
+Each skill should cover one product area well. Use `references/` files for detailed content to keep SKILL.md under 500 lines.
 
 ### Progressive Disclosure
 
@@ -87,7 +87,7 @@ The description field is loaded at startup for all skills. Make it specific and 
 
 ### Follow Naming Conventions
 
-- Directories: `kebab-case` with `pipes-` prefix
+- Directories: `kebab-case` with product prefix (`pipes-`, `portal-`)
 - Files: `SKILL.md` (uppercase)
 - Scripts: `kebab-case.sh`
 

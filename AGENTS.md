@@ -4,19 +4,27 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI coding agents working with blockchain indexers. Skills extend agent capabilities for building, deploying, and optimizing indexers with the Pipes SDK.
+A collection of skills for AI coding agents working with SQD products. Skills extend agent capabilities for building blockchain indexers (Pipes SDK) and querying on-chain data (Portal).
 
 ## Creating a New Skill
 
 ### Directory Structure
 
 ```
-skills/
-  {skill-name}/           # kebab-case directory name
+{product}/
+  {skill-name}/           # kebab-case with product prefix
     SKILL.md              # Required: skill definition
     scripts/              # Optional: executable scripts
     references/           # Optional: supporting documentation
-    templates/            # Optional: code templates
+```
+
+**Current structure:**
+```
+pipes-sdk/
+  pipes-new-indexer/      # Create and deploy indexers
+  pipes-troubleshooting/  # Debug errors and optimize performance
+portal/
+  portal-query/           # Query blockchain data across all chains
 ```
 
 ### Naming Conventions
@@ -36,7 +44,7 @@ allowed-tools: [{Optional: space-delimited list of pre-approved tools}]
 metadata:
   author: subsquid
   version: "1.1.0"
-  category: {core|template|documentation}
+  category: {core|template|documentation|portal-core}
 ---
 
 # Pipes: {Skill Title}
@@ -78,22 +86,6 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 - Write machine-readable output (JSON) to stdout
 - Include a cleanup trap for temp files
 - Make scripts executable: `chmod +x scripts/*.sh`
-
-### Template Structure
-
-For template skills (e.g., `pipes-template-dex-swaps`):
-
-```
-pipes-template-{name}/
-  SKILL.md                          # Template usage guide
-  templates/
-    {template-name}/
-      template.config.ts            # Template configuration
-      templates/
-        clickhouse-table.sql        # Database schemas
-        pg-table.ts
-        transformer.ts              # Event transformers
-```
 
 ### End-User Installation
 
@@ -139,7 +131,7 @@ All skills work with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk)
 Use the [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) reference library to validate your skills:
 
 ```bash
-skills-ref validate ./skills/{skill-name}
+skills-ref validate ./{product}/{skill-name}
 ```
 
 This checks that your `SKILL.md` frontmatter is valid and follows all naming conventions.
