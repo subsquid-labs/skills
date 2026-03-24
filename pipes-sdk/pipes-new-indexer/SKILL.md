@@ -5,7 +5,7 @@ compatibility: Requires npm/npx for @iankressin/pipes-cli
 allowed-tools: [Bash, Read, Write]
 metadata:
   author: subsquid
-  version: "3.0.0"
+  version: "1.1.1"
   category: core
 ---
 

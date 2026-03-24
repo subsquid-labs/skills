@@ -4,7 +4,7 @@ description: Query blockchain data across 210+ chains using SQD Portal. Covers E
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
-  version: "3.0.0"
+  version: "1.1.1"
   category: portal-core
 ---
 

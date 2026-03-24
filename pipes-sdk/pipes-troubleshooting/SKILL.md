@@ -4,7 +4,7 @@ description: Diagnoses and fixes runtime errors in blockchain indexers. Handles 
 allowed-tools: [Read, Edit, Grep, Bash]
 metadata:
   author: subsquid
-  version: "3.0.0"
+  version: "1.1.1"
   category: core
 ---
 
