@@ -1,26 +1,4 @@
----
-name: portal-query-evm-traces
-description: Query EVM traces for internal transactions and contract deployments. Track CREATE operations, internal calls, and delegatecall patterns.
-allowed-tools: [Bash, WebFetch, WebSearch]
-metadata:
-  author: subsquid
-  version: "2.0.0"
-  category: portal-core
----
-
-## When to Use This Skill
-
-Use this skill when you need to:
-- Track contract deployments (CREATE/CREATE2 operations)
-- Monitor internal ETH transfers
-- Analyze internal function calls between contracts
-- Track proxy pattern delegatecalls
-- Investigate MEV bot activity (multi-hop swaps)
-- Find contracts deployed by specific addresses
-
-**EVM traces capture internal contract interactions** that don't appear in the transactions table.
-
----
+# EVM Traces — Query Reference
 
 ## Query Structure
 
@@ -77,7 +55,7 @@ Contract creation via CREATE or CREATE2 opcodes.
 **INDEXED filter fields:**
 - `createFrom` - Deployer address (INDEXED)
 
-> **⚠️ `createResultAddress` is NOT a supported filter.** Despite being listed in some docs, Portal does not support filtering by deployed contract address. You can only filter by deployer (`createFrom`). To find who deployed a known contract, you must know the deployer address first, or scan without address filters over a narrow block range.
+> **`createResultAddress` is NOT a supported filter.** Despite being listed in some docs, Portal does not support filtering by deployed contract address. You can only filter by deployer (`createFrom`). To find who deployed a known contract, you must know the deployer address first, or scan without address filters over a narrow block range.
 
 **Response fields:** `createResultAddress` (deployed contract address), `createResultCode` (deployed bytecode), `createValue`
 
@@ -153,7 +131,177 @@ Contract creation via CREATE or CREATE2 opcodes.
 **Dataset:** `ethereum-mainnet` | **Contract:** Uniswap V2 Router
 **Notes:** `error: null` = success; `callValue` shows ETH transferred
 
-> **More examples:** See `references/additional-examples.md` for delegatecall patterns, CREATE2, multi-hop MEV swaps, and self-destruct tracking.
+---
+
+## More Examples
+
+### Example 3: Monitor Delegatecall Patterns (Proxy Contracts)
+
+**Use case:** Track delegatecall operations for proxy pattern analysis.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 19500000,
+  "toBlock": 19500100,
+  "traces": [{
+    "type": ["call"]
+  }],
+  "fields": {
+    "trace": {
+      "type": true,
+      "callFrom": true,
+      "callTo": true,
+      "callSighash": true,
+      "callCallType": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `callCallType` is NOT a valid filter field; filter by `type: ["call"]` and then filter for `callCallType == "delegatecall"` client-side
+- `callFrom` = proxy contract, `callTo` = implementation contract
+
+---
+
+### Example 4: Find CREATE2 Deployments
+
+**Use case:** Track deterministic contract deployments (CREATE2).
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 19500000,
+  "traces": [{
+    "type": ["create"],
+    "createResultAddress": ["0x1234567890123456789012345678901234567890"]
+  }],
+  "fields": {
+    "trace": {
+      "type": true,
+      "createFrom": true,
+      "createResultAddress": true,
+      "createValue": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Notes:**
+- Cannot directly filter by CREATE vs CREATE2 (both have type "create")
+- Use `createResultAddress` to find specific contract deployment
+- Check transaction input for CREATE2 opcode (0xf5)
+
+---
+
+### Example 5: Track Multi-Hop Swaps (MEV Analysis)
+
+**Use case:** Analyze complex swap paths (e.g., Token A -> B -> C).
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 19500000,
+  "toBlock": 19500100,
+  "traces": [{
+    "type": ["call"],
+    "callSighash": ["0x022c0d9f"]
+  }],
+  "fields": {
+    "trace": {
+      "type": true,
+      "callFrom": true,
+      "callTo": true,
+      "callSighash": true,
+      "callInput": true,
+      "callResultOutput": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Function:** `swap(uint256,uint256,address,bytes)` on Uniswap V2 pairs
+**Notes:**
+- Multiple traces per transaction = multi-hop swap
+- `callFrom` = calling contract (router or previous pair)
+
+---
+
+### Example 6: Contract Self-Destruct Tracking
+
+**Use case:** Monitor contracts being destroyed (rare but important).
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 19000000,
+  "toBlock": 19500000,
+  "traces": [{
+    "type": ["suicide"],
+    "suicideRefundAddress": ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]
+  }],
+  "fields": {
+    "trace": {
+      "type": true,
+      "suicideAddress": true,
+      "suicideRefundAddress": true,
+      "suicideBalance": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `suicideAddress` = contract being destroyed
+- `suicideRefundAddress` = recipient of remaining ETH
+- Post-Merge: selfdestruct is deprecated but still functional
+
+---
+
+## Call Types Reference
+
+**4 call types in EVM:**
+
+**1. `call` (most common):**
+- Normal external function call; can transfer ETH; called contract executes in its own context
+
+**2. `staticcall`:**
+- Read-only call; cannot modify state or transfer ETH; used for view/pure functions
+
+**3. `delegatecall`:**
+- Execute code in caller's context; used for proxy patterns; storage changes affect caller, not callee
+
+**4. `callcode` (deprecated):**
+- Legacy version of delegatecall; rarely used in modern contracts
+
+---
+
+## Trace Position and Ordering
+
+**Traces include position fields:**
+- `traceAddress` - Array indicating position in call tree
+- `transactionIndex` - Position of transaction in block
+- `subtraces` - Number of child traces
+
+**Example trace tree:**
+```
+Transaction 0
+|- Trace [0] - Router.swap()
+|  |- Trace [0, 0] - Pair.swap()
+|  |  \- Trace [0, 0, 0] - Token.transfer()
+|  \- Trace [0, 1] - Another internal call
+\- Trace [1] - Parallel call
+```
+
+**`traceAddress` values:**
+- `[]` - Top-level call (transaction itself)
+- `[0]` - First internal call
+- `[0, 0]` - First call within first call
+- `[0, 1]` - Second call within first call
 
 ---
 
@@ -164,9 +312,9 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 ```
 Transaction: User calls Uniswap Router.swap()
-├─ Trace 1: Router calls Pair.swap() [internal call]
-├─ Trace 2: Pair calls Token.transfer() [internal call]
-└─ Trace 3: Pair transfers ETH [internal ETH transfer]
+|- Trace 1: Router calls Pair.swap() [internal call]
+|- Trace 2: Pair calls Token.transfer() [internal call]
+\- Trace 3: Pair transfers ETH [internal ETH transfer]
 ```
 
 **Key insight:** One transaction can generate dozens of traces.
@@ -184,59 +332,45 @@ Transaction: User calls Uniswap Router.swap()
 - `revertReason` - Decoded revert reason (if available)
 
 **Response structure note:** The response uses nested `action` and `result` objects:
-- `callFrom` → `action.from`, `callTo` → `action.to`
-- `callCallType` → `action.callType`
-- `createResultAddress` → `result.address`
-- `callResultOutput` → `result.output`
+- `callFrom` -> `action.from`, `callTo` -> `action.to`
+- `callCallType` -> `action.callType`
+- `createResultAddress` -> `result.address`
+- `callResultOutput` -> `result.output`
 
 ---
 
 ## Common Mistakes
 
-### ❌ Using Transaction Filters for Internal Calls
+### Using Transaction Filters for Internal Calls
 
 ```json
-{"transactions": [{"to": ["0x..."]}]}  // ❌ Misses internal calls
+{"transactions": [{"to": ["0x..."]}]}  // Misses internal calls
 ```
 **Fix:** Use `traces` with `callTo` to capture internal calls.
 
 ---
 
-### ❌ Filtering CREATE by Wrong Field
+### Filtering CREATE by Wrong Field
 
 ```json
-{"traces": [{"type": ["create"], "callFrom": ["0x..."]}]}  // ❌ Wrong field
+{"traces": [{"type": ["create"], "callFrom": ["0x..."]}]}  // Wrong field
 ```
 **Fix:** Use `createFrom` for CREATE traces (not `callFrom`).
 
 ---
 
-### ❌ Ignoring Trace Type
+### Ignoring Trace Type
 
 ```json
-{"traces": [{"callFrom": ["0x..."]}]}  // ❌ No type specified
+{"traces": [{"callFrom": ["0x..."]}]}  // No type specified
 ```
 **Fix:** Always specify `"type": ["call"]` (or "create", "suicide").
 
 ---
 
-### ❌ Confusing Creation Bytecode with Runtime Bytecode
+### Confusing Creation Bytecode with Runtime Bytecode
 
 `createResultCode` = deployed (runtime) bytecode. To get creation bytecode, query `transaction.input`.
-
----
-
-## Response Format
-
-Portal returns **JSON Lines** (one JSON object per line):
-
-```json
-{"header":{"number":19500000,"hash":"0x...","timestamp":1234567890}}
-{"traces":[{"type":"call","action":{"from":"0xRouter...","to":"0xPair...","callType":"call","value":"0","input":"0x022c0d9f..."},"result":{"gasUsed":21000,"output":"0x..."}}]}
-{"traces":[{"type":"create","action":{"from":"0xFactory...","value":"0"},"result":{"address":"0xNewContract...","code":"0x6080...","gasUsed":500000}}]}
-```
-
-**Parsing:** Split by newlines, parse each line as JSON. First line = block header.
 
 ---
 
@@ -252,7 +386,7 @@ Portal returns **JSON Lines** (one JSON object per line):
 
 ### Block Range Limits for CREATE Traces
 
-> **⚠️ Keep CREATE trace queries to ≤50K blocks per request.** Larger ranges (e.g., 500K blocks) cause Portal to silently drop results from the ndjson stream. This was discovered empirically — queries return partial data without errors. Chunk your queries and aggregate results.
+> **Keep CREATE trace queries to <=50K blocks per request.** Larger ranges (e.g., 500K blocks) cause Portal to silently drop results from the ndjson stream. This was discovered empirically -- queries return partial data without errors. Chunk your queries and aggregate results.
 
 ### Multi-Address Filter Gotcha
 
@@ -260,7 +394,7 @@ When filtering `createFrom` with multiple addresses, high-volume deployers (e.g.
 
 **Avoid:**
 ```json
-{"fromBlock": 0, "toBlock": 19500000, "traces": [{}]}  // ❌ Billions of traces
+{"fromBlock": 0, "toBlock": 19500000, "traces": [{}]}  // Billions of traces
 ```
 
 ---
@@ -313,45 +447,10 @@ Query all contracts deployed by a specific protocol's deployer address:
   }]
 }
 ```
-Access deployer as `trace.action.from` and new contract as `trace.result.address` (NOT `trace.createFrom` or `trace.createResultAddress` — those are request filter names, not response field names).
+Access deployer as `trace.action.from` and new contract as `trace.result.address` (NOT `trace.createFrom` or `trace.createResultAddress` -- those are request filter names, not response field names).
 
-**No `transactionHash` on traces** — only `transactionIndex`. To get the tx hash, include the transaction in your query or look it up separately.
+**No `transactionHash` on traces** -- only `transactionIndex`. To get the tx hash, include the transaction in your query or look it up separately.
 
 **Factory-deployed contracts:** Many DeFi protocols deploy via factory contracts (Uniswap, Morpho, Euler). The `createFrom` is the factory contract, not the protocol's EOA deployer. To track these, filter by the factory's address as `createFrom`.
 
 **CREATE2 deterministic deployments:** These also appear as `type: "create"` traces. The deployer address will be the factory using CREATE2. Same query pattern works.
-
----
-
-## MCP Tools vs Raw API
-
-If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
-
-| Approach | When to Use |
-|----------|------------|
-| **MCP `portal_query_traces`** | Standard trace queries by type (call/create/suicide), caller, recipient, sighash. Fastest path |
-| **Raw Stream API (curl/fetch)** | Complex filter combinations, joining traces with parent transaction logs, or streaming large datasets |
-
-**Example — MCP quick path:**
-Use `portal_query_traces` with `type: ["create"]` and `create_from` to find all contracts deployed by an address. Use `field_preset: "minimal"` for smallest response.
-
-**Example — when to use raw API:**
-When you need `include_transaction_logs: true` to correlate internal calls with emitted events, or when building MEV analysis pipelines.
-
----
-
-## Related Skills
-
-- **portal-query-evm-transactions** - Query top-level transactions that generate traces
-- **portal-query-evm-logs** - Query events emitted during traced calls
-- **portal-dataset-discovery** - Find correct dataset name for your chain
-
----
-
-## Additional Resources
-
-- **API Documentation:** https://beta.docs.sqd.dev/api/catalog/stream
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API traces querying
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Complete traces query specification
-- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks

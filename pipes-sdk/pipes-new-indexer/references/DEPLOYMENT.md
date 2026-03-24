@@ -1,23 +1,6 @@
----
-name: pipes-deploy
-description: Deploys blockchain indexers to ClickHouse — either local Docker for development or ClickHouse Cloud for production — with full validation and data verification.
-allowed-tools: [Read, Write, Edit, Bash, WebFetch]
-metadata:
-  author: subsquid
-  version: "1.0.0"
-  category: deployment
----
-
 # Pipes: Deploy
 
 Deploy Subsquid Pipes indexers to ClickHouse — locally via Docker for development and testing, or to ClickHouse Cloud for production.
-
-## When to Use This Skill
-
-Activate when:
-- User wants to run an indexer locally (Docker, development, testing)
-- User wants to deploy to ClickHouse Cloud (production, staging)
-- User mentions "deploy", "run locally", "docker", "ClickHouse Cloud", or "production deployment"
 
 ---
 
@@ -503,11 +486,11 @@ diff /tmp/schema_tables.txt /tmp/code_tables.txt
 
 ---
 
-## Related Skills
+## Related Documentation
 
-- [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
-- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors
-- [pipes-performance](../pipes-performance/SKILL.md) - Optimize performance
+- [pipes-new-indexer](../SKILL.md) - Create indexers
+- [pipes-troubleshooting](../../pipes-troubleshooting/SKILL.md) - Fix errors
+- [PERFORMANCE.md](../../pipes-troubleshooting/references/PERFORMANCE.md) - Optimize performance
 
 ## Official Subsquid Documentation
 

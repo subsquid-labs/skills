@@ -227,7 +227,7 @@ const pool = ins.accounts?.[0] ?? ''
 
 **Real examples:** SPL Stake Pool (solana/006), Kamino Lend uses d8 but manual decode (solana/001)
 
-**Volume warning:** Many non-Anchor programs (especially SPL Stake Pool) have very low on-chain instruction volume. Always check volume with Portal BEFORE building — see the "Pre-Build: Estimate Instruction Volume" section in the portal-query-solana-instructions skill.
+**Volume warning:** Many non-Anchor programs (especially SPL Stake Pool) have very low on-chain instruction volume. Always check volume with Portal BEFORE building — see the "Pre-Build: Estimate Instruction Volume" section in the portal-query skill's Solana reference.
 
 **CPI (Cross-Program Invocation) — CRITICAL for many DeFi protocols:**
 - Many Solana DeFi protocols use a layered architecture where user-facing programs call core programs via CPI
@@ -797,7 +797,7 @@ sed -i '' "s/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=$DB_NAME/" <project-fold
      -d "SELECT 1"
    ```
 
-For complete deployment guide (local Docker or ClickHouse Cloud), see pipes-deploy skill.
+For complete deployment guide (local Docker or ClickHouse Cloud), see [DEPLOYMENT.md](references/DEPLOYMENT.md).
 
 ### Step 3.5: Post-Generation Verification Checklist
 
@@ -1419,7 +1419,7 @@ Many DeFi protocols are forks of well-known codebases. Recognizing forks saves t
 
 - See ENVIRONMENT_SETUP.md for setup verification - Verify environment first
 - [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix issues
-- [pipes-deploy](../pipes-deploy/SKILL.md) - Local and cloud deployment
+- [DEPLOYMENT.md](references/DEPLOYMENT.md) - Local and cloud deployment
 
 ## Related Documentation
 

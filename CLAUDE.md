@@ -453,7 +453,7 @@ grep "export const" template.config.ts
 - `datasets/zksync-era` → `datasets/zksync-mainnet`
 - `datasets/bsc` → `datasets/binance-mainnet`
 
-**Action:** Check CHAIN_NAME_MAPPING.md before using any chain name.
+**Action:** Check portal/portal-query/references/dataset-mapping.md before using any chain name.
 
 **Verification Script:**
 ```bash
@@ -580,7 +580,7 @@ nvm alias default 22
 
 **Template Development Addendum:**
 - Export names must match templateId (exact!)
-- Portal dataset names must be verified (check CHAIN_NAME_MAPPING.md)
+- Portal dataset names must be verified (check portal/portal-query/references/dataset-mapping.md)
 - ClickHouse password must be verified after EVERY generation
 - Templates must produce data within 30 seconds (syncing blocks ≠ success)
 - Pivot if protocol is too complex for template pattern

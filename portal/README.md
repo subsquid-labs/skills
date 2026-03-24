@@ -2,30 +2,19 @@
 
 ![Experimental](https://img.shields.io/badge/experimental-blue)
 
-6 skills for AI coding agents working with [SQD Portal](https://portal.sqd.dev) - query blockchain data across 210+ chains without infrastructure.
+1 skill for AI coding agents working with [SQD Portal](https://portal.sqd.dev) - query blockchain data across 210+ chains without infrastructure.
 
 ## Installation
 
-**Install all Portal skills:**
-```bash
-npx skills add subsquid-labs/agent-skills/portal --all
-```
-
-**Or install selectively:**
 ```bash
 npx skills add subsquid-labs/agent-skills/portal
 ```
 
 ## Available Skills
 
-| Skill | Use Case | Category |
-|-------|----------|----------|
-| **portal-dataset-discovery** | Find and verify correct dataset names for blockchain queries | Core |
-| **portal-query-evm-logs** | Query EVM event logs with topic filtering for token transfers and DeFi events | Core |
-| **portal-query-evm-transactions** | Query EVM transactions by sender, recipient, or function selector | Core |
-| **portal-query-evm-traces** | Query internal transactions, contract deployments, and delegatecall patterns | Advanced |
-| **portal-query-solana-instructions** | Query Solana program instructions with discriminator and account filters | Core |
-| **portal-query-hyperliquid-fills** | Query Hyperliquid trade fills with coin, user, and side filters | Core |
+| Skill | Use Case |
+|-------|----------|
+| **portal-query** | Query blockchain data across all supported chains — EVM logs/transactions/traces, Solana instructions, and Hyperliquid fills — with dataset discovery and verification |
 
 ## Usage
 
@@ -44,15 +33,14 @@ Track Jupiter swap instructions on Solana
 ```
 Analyze BTC trading fills on Hyperliquid
 ```
+```
+What's the correct Portal dataset name for Arbitrum?
+```
 
 ## Skill Structure
 
-Each skill contains:
-
-- `SKILL.md` - Instructions for the agent
-- YAML frontmatter with metadata
-- Real-world query examples
-- Performance guidance
+- `portal-query/SKILL.md` — Unified query guide with dataset discovery, workflow, and MCP tools reference
+- `portal-query/references/` — Per-data-type query patterns, examples, and dataset mapping
 
 ## Resources
 

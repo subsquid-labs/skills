@@ -21,7 +21,7 @@ skills/
 
 ### Naming Conventions
 
-- **Skill directory**: `kebab-case` with `pipes-` prefix (e.g., `pipes-new-indexer`, `pipes-deploy-railway`)
+- **Skill directory**: `kebab-case` with product prefix (e.g., `pipes-new-indexer`, `portal-query`)
 - **SKILL.md**: Always uppercase, always this exact filename
 - **Scripts**: `kebab-case.sh` (e.g., `setup-database.sh`, `validate-abi.sh`)
 
@@ -109,9 +109,9 @@ Skills are automatically available once installed. The agent will use them when 
 
 Some skills require MCP (Model Context Protocol) servers:
 
-- **ClickHouse MCP**: For `pipes-validation`, `pipes-deploy` (local Docker)
-- **ClickHouse Cloud MCP**: For `pipes-deploy` (ClickHouse Cloud)
-- **Railway MCP**: For `pipes-deploy-railway`
+- **ClickHouse MCP**: For `pipes-new-indexer` (local Docker deployment)
+- **ClickHouse Cloud MCP**: For `pipes-new-indexer` (ClickHouse Cloud deployment)
+- **Railway MCP**: For production deployment via Railway
 
 These are configured in `.claude/settings.json` at the project level, not within individual skills.
 
@@ -124,7 +124,7 @@ Agent skills for the full indexer development lifecycle: creation, debugging, de
 Production-ready templates for common blockchain patterns: DEX swaps, NFT transfers, liquid staking, lending protocols.
 
 ### Documentation Skills
-Workflow guides and pattern documentation: `pipes-workflow`, `pipes-deployment`, `pipes-patterns`.
+Workflow guides and pattern documentation included as reference files within core skills.
 
 ## Integration with Pipes SDK
 

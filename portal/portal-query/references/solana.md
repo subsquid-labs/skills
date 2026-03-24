@@ -1,25 +1,4 @@
----
-name: portal-query-solana-instructions
-description: Query Solana program instructions using SQD Portal. Track program interactions, SPL tokens, and wallet activity with discriminator filters.
-allowed-tools: [Bash, WebFetch, WebSearch]
-metadata:
-  author: subsquid
-  version: "2.0.0"
-  category: portal-core
----
-
-## When to Use This Skill
-
-Use this skill when you need to:
-- Track Solana program interactions (Jupiter swaps, Raydium pools, etc.)
-- Monitor SPL token transfers
-- Analyze wallet activity on Solana
-- Filter by specific program functions (using discriminators)
-- Track account interactions with programs
-
-**Solana instructions are the equivalent of EVM transactions/logs** - they capture on-chain program calls.
-
----
+# Solana Instructions — Query Reference
 
 ## Pre-Build: Estimate Instruction Volume
 
@@ -149,7 +128,7 @@ function getDiscriminator(name: string): string {
 }
 ```
 
-**⚠️ Important:** Discriminator values are computed from the actual program IDL and may differ between program versions. Always verify against the specific program version or use typegen which reads the correct IDL.
+**Warning:** Discriminator values are computed from the actual program IDL and may differ between program versions. Always verify against the specific program version or use typegen which reads the correct IDL.
 
 ---
 
@@ -237,7 +216,283 @@ function getDiscriminator(name: string): string {
 
 **Notes:** `mentionsAccount` matches if the account appears ANYWHERE in accounts array. More expensive than `a0-a31` (position-specific) filters.
 
-> **More examples:** See `references/additional-examples.md` for account position filtering, Raydium, Orca Whirlpool, token balance tracking, program deployments, and failed instructions.
+---
+
+## More Examples
+
+### Example 4: Filter by Specific Account Position
+
+**Use case:** Track instructions where a specific token appears as first account.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 250000000,
+  "toBlock": 250001000,
+  "instructions": [{
+    "programId": ["JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"],
+    "a0": ["EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `a0` = first account in accounts array
+- `a1` = second account, `a2` = third, etc. (up to a31)
+- More efficient than `mentionsAccount`
+- Use when you know the account position
+
+---
+
+### Example 5: Track Raydium Pool Interactions
+
+**Use case:** Monitor Raydium AMM swap instructions.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 250000000,
+  "toBlock": 250001000,
+  "instructions": [{
+    "programId": ["675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"],
+    "d8": ["0xf8c69e91e17587c8"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** Raydium AMM V4
+**Function:** swap (example discriminator)
+**Notes:**
+- Raydium uses Anchor program (8-byte discriminators)
+- `accounts` array includes pool accounts, token accounts, etc.
+
+---
+
+### Example 6: Query Orca Whirlpool Instructions
+
+**Use case:** Monitor all instructions from Orca Whirlpool program with block metadata.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Dataset:** `solana-mainnet`
+**Program:** Orca Whirlpool
+
+---
+
+### Example 7: Filter Orca Swaps by Discriminator
+
+**Use case:** Isolate specific swap instruction types using 8-byte discriminators.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
+    "d8": ["0xf8c69e91e17587c8"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "data": true,
+      "accounts": true
+    }
+  }
+}
+```
+
+---
+
+### Example 8: Filter Swaps by Specific Pool
+
+**Use case:** Isolate transactions for a particular trading pair (e.g., USDC/SOL pool).
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "instructions": [{
+    "programId": ["whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"],
+    "d8": ["0xf8c69e91e17587c8"],
+    "a0": ["7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm"]
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true
+    }
+  }
+}
+```
+
+**Pool:** USDC/SOL pool address
+**Notes:** Position-based account filters (`a0`-`a31`) are more efficient than protocol-wide queries.
+
+---
+
+### Example 9: Track USDC Token Balance Changes
+
+**Use case:** Monitor USDC token balance changes across blocks.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "tokenBalance": {
+      "account": true,
+      "preMint": true,
+      "postMint": true,
+      "preAmount": true,
+      "postAmount": true,
+      "preOwner": true,
+      "postOwner": true
+    }
+  },
+  "tokenBalances": [{
+    "preMint": ["EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"]
+  }]
+}
+```
+
+**Token:** USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
+
+---
+
+### Example 10: Monitor Transactions by Fee Payer
+
+**Use case:** Track all transactions from a specific wallet address.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 280000000,
+  "toBlock": 280000003,
+  "fields": {
+    "transaction": {
+      "signatures": true,
+      "feePayer": true,
+      "err": true
+    }
+  },
+  "transactions": [{
+    "feePayer": ["9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"]
+  }]
+}
+```
+
+---
+
+### Example 11: Track Program Deployments
+
+**Use case:** Monitor new program deployments using BPF Upgradeable Loader.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 270000044,
+  "toBlock": 270000047,
+  "instructions": [{
+    "programId": ["BPFLoaderUpgradeab1e11111111111111111111111"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "transaction": {
+      "signatures": true,
+      "feePayer": true
+    },
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "transactionIndex": true
+    }
+  }
+}
+```
+
+**Program:** BPF Upgradeable Loader
+**Notes:** First account typically represents the deployed program; fee payer identifies deployer.
+
+---
+
+### Example 12: Track Failed Instructions
+
+**Use case:** Find transactions with failed instructions.
+
+```json
+{
+  "type": "solana",
+  "fromBlock": 250000000,
+  "toBlock": 250001000,
+  "instructions": [{
+    "programId": ["JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"],
+    "isCommitted": false
+  }],
+  "fields": {
+    "instruction": {
+      "programId": true,
+      "accounts": true,
+      "data": true
+    },
+    "transaction": {
+      "err": true,
+      "feePayer": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `isCommitted: false` filters for failed instructions
+- `isCommitted: true` filters for successful instructions
+- `transaction.err` contains error details
 
 ---
 
@@ -300,13 +555,13 @@ function getDiscriminator(name: string): string {
 
 ## Common Mistakes
 
-### ❌ Wrong Discriminator Length
+### Wrong Discriminator Length
 
 ```json
 {
   "instructions": [{
     "programId": ["JUP6..."],
-    "d1": ["0xe4"]  // ❌ Jupiter uses d8, not d1
+    "d1": ["0xe4"]  // Wrong — Jupiter uses d8, not d1
   }]
 }
 ```
@@ -315,12 +570,12 @@ function getDiscriminator(name: string): string {
 
 ---
 
-### ❌ Filtering Without programId
+### Filtering Without programId
 
 ```json
 {
   "instructions": [{
-    "d8": ["0xe445a52e51cb9a1d"]  // ❌ No programId filter
+    "d8": ["0xe445a52e51cb9a1d"]  // Wrong — No programId filter
   }]
 }
 ```
@@ -329,12 +584,12 @@ function getDiscriminator(name: string): string {
 
 ---
 
-### ❌ Using EVM-Style Block Numbers
+### Using EVM-Style Block Numbers
 
 ```json
 {
   "type": "solana",
-  "fromBlock": 19500000  // ❌ EVM block number - way too low
+  "fromBlock": 19500000  // Wrong — EVM block number, way too low
 }
 ```
 
@@ -342,7 +597,7 @@ function getDiscriminator(name: string): string {
 
 ---
 
-### ❌ Forgetting Transaction Fields for Context
+### Forgetting Transaction Fields for Context
 
 Include transaction context when you need fee payer or success status:
 ```json
@@ -356,19 +611,6 @@ Include transaction context when you need fee payer or success status:
 
 ---
 
-## Response Format
-
-Portal returns **JSON Lines** (one JSON object per line):
-
-```json
-{"header":{"number":250000000,"hash":"...","parentHash":"...","timestamp":1234567890}}
-{"instructions":[{"programId":"JUP6...","accounts":["EPjF...","So11..."],"data":"0xe445a52e..."}],"transactions":[{"feePayer":"9WzD...","fee":5000,"err":null}]}
-```
-
-**Parsing:** Split by newlines, parse each line as JSON. First line = block header.
-
----
-
 ## Performance Tips
 
 **Filter selectivity order (best to worst):**
@@ -378,23 +620,6 @@ Portal returns **JSON Lines** (one JSON object per line):
 4. `programId` only
 
 **Block range:** Solana processes ~2 slots/second. 1,000-10,000 slots ≈ 8-80 minutes of data.
-
----
-
-## MCP Tools vs Raw API
-
-If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
-
-| Approach | When to Use |
-|----------|------------|
-| **MCP `portal_query_solana_instructions`** | Standard queries by program ID, discriminator (d1-d8), account filters (a0-a15). Fastest path |
-| **Raw Stream API (curl/fetch)** | Custom field selection, joining with transaction balances/token balances/logs, or streaming large datasets |
-
-**Example — MCP quick path:**
-Use `portal_query_solana_instructions` with `program_id`, `d8`, and account filters. Set `include_inner_instructions: true` for CPI calls.
-
-**Example — when to use raw API:**
-When you need `include_transaction_token_balances: true` to track SPL balance changes alongside instructions.
 
 ---
 
@@ -421,20 +646,3 @@ Solana scans at ~200-500 blocks/sec regardless of filter specificity. Plan for:
 - 3M slots (405M→408M): 2-4 hours
 - 38M slots (370M→408M): 10-20 hours
 - Node v25 may crash mid-sync; the SDK resumes from checkpoint on restart.
-
-## Related Skills
-
-- **portal-dataset-discovery** - Find correct Solana dataset name
-- **portal-query-evm-logs** - EVM equivalent (for comparison)
-- **pipes-new-indexer** - Full Solana indexer scaffolding with `@subsquid/solana-typegen` workflow
-
----
-
-## Additional Resources
-
-- **API Documentation:** https://beta.docs.sqd.dev/api/catalog/solana/stream
-- **[Solana Typegen](https://docs.sqd.ai/solana-indexing/sdk/typegen/)** - Generate typed decoders from IDLs (discriminators, account selection, instruction decoding)
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API Solana querying
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
-- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** - Complete Solana query specification
-- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported Solana networks

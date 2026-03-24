@@ -355,6 +355,6 @@ Bun.serve({
 
 ## Related
 
-- [TRADINGVIEW_PATTERNS.md](./TRADINGVIEW_PATTERNS.md) — Frontend chart patterns that consume these queries
 - [PATTERNS.md](./PATTERNS.md) — General indexing patterns
+- [PERFORMANCE.md](./PERFORMANCE.md) — Sync speed optimization
 - [pipes-new-indexer SCHEMA_GUIDE](../pipes-new-indexer/references/SCHEMA_GUIDE.md) — Table design guide

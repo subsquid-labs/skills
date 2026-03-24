@@ -1,12 +1,3 @@
----
-name: pipes-performance
-description: Analyzes and optimizes blockchain indexer sync performance to reduce sync time while maintaining data completeness.
-allowed-tools: [Read, Edit, Grep, BashOutput, Bash]
-metadata:
-  author: subsquid
-  version: "1.0.0"
-  category: core
----
 
 # Pipes: Performance Optimizer
 
@@ -296,12 +287,12 @@ Don't optimize if:
 
 ## Related Skills
 
-- [pipes-troubleshooting](../pipes-troubleshooting/SKILL.md) - Fix errors and validate data
-- [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create indexers
+- [pipes-troubleshooting](../SKILL.md) - Fix errors and validate data
+- [pipes-new-indexer](../../pipes-new-indexer/SKILL.md) - Create indexers
 
 ## Related Documentation
 
-- [PATTERNS.md](../pipes-troubleshooting/references/PATTERNS.md) - Performance optimization patterns and benchmarks
+- [PATTERNS.md](./PATTERNS.md) - Performance optimization patterns and benchmarks
 
 ## Official Subsquid Documentation
 

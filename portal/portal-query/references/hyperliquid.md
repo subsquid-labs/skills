@@ -1,26 +1,4 @@
----
-name: portal-query-hyperliquid-fills
-description: Construct SQD Portal Stream API queries for Hyperliquid trade fills. Track trading activity, analyze PnL, monitor specific traders, and filter by coin, side, or user.
-allowed-tools: [Bash, WebFetch, WebSearch]
-metadata:
-  author: subsquid
-  version: "2.0.0"
-  category: portal-core
----
-
-## When to Use This Skill
-
-Use this skill when you need to:
-- Track trade fills on Hyperliquid (buys, sells, liquidations)
-- Monitor a specific trader's activity and positions
-- Analyze closed PnL for users or coins
-- Track high-volume trades across all pairs
-- Filter fills by coin (BTC, ETH, etc.), side (buy/sell), or user address
-- Analyze fee structures and builder fees
-
-**Hyperliquid fills** represent completed trades on the Hyperliquid perpetuals exchange. Each fill includes price, size, direction, PnL, and fee data.
-
----
+# Hyperliquid Fills — Query Reference
 
 ## Query Structure
 
@@ -159,7 +137,128 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 - `fee` can be negative (maker rebate)
 - Net PnL = sum(closedPnl) - sum(fee)
 
-> **More examples:** See `references/additional-examples.md` for full metadata queries, fee analysis, and side filtering.
+---
+
+## More Examples
+
+### Example 4: Track High-Volume Trades (All Fills with Full Metadata)
+
+**Use case:** Capture all trade fills with complete metadata for comprehensive analysis.
+
+```json
+{
+  "type": "hyperliquidFills",
+  "fromBlock": 800000000,
+  "toBlock": 800000050,
+  "fills": [{}],
+  "fields": {
+    "fill": {
+      "coin": true,
+      "side": true,
+      "px": true,
+      "sz": true,
+      "user": true,
+      "dir": true,
+      "closedPnl": true,
+      "fee": true,
+      "feeToken": true,
+      "hash": true,
+      "oid": true,
+      "tid": true,
+      "crossed": true,
+      "startPosition": true,
+      "cloid": true,
+      "builderFee": true
+    },
+    "block": {
+      "number": true,
+      "timestamp": true
+    }
+  }
+}
+```
+
+**Notes:**
+- Empty filter `{}` matches all fills (use narrow block ranges to avoid large responses)
+- `crossed` indicates whether the order crossed the spread (taker order)
+- `hash` is the unique fill hash, `tid` is the trade ID, `oid` is the order ID
+- `cloid` is the client-assigned order ID (hex string or null)
+
+---
+
+### Example 5: Monitor Specific Coin with Fee Analysis
+
+**Use case:** Track ETH perpetual fills and analyze fee structures.
+
+```json
+{
+  "type": "hyperliquidFills",
+  "fromBlock": 800000000,
+  "toBlock": 800000200,
+  "fills": [{
+    "coin": ["ETH"]
+  }],
+  "fields": {
+    "fill": {
+      "coin": true,
+      "side": true,
+      "px": true,
+      "sz": true,
+      "user": true,
+      "fee": true,
+      "feeToken": true,
+      "builderFee": true,
+      "crossed": true
+    },
+    "block": {
+      "number": true,
+      "timestamp": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `crossed: true` means taker order (pays fee), `crossed: false` means maker order (may receive rebate)
+- Negative `fee` values indicate maker rebates
+- `builderFee` is separate from the standard fee and may be null
+
+---
+
+### Example 6: Track Buys vs Sells for a Coin
+
+**Use case:** Monitor only buy-side fills for BTC to track buying pressure.
+
+```json
+{
+  "type": "hyperliquidFills",
+  "fromBlock": 800000000,
+  "toBlock": 800000100,
+  "fills": [{
+    "coin": ["BTC"],
+    "side": "B"
+  }],
+  "fields": {
+    "fill": {
+      "coin": true,
+      "side": true,
+      "px": true,
+      "sz": true,
+      "user": true,
+      "dir": true
+    },
+    "block": {
+      "number": true,
+      "timestamp": true
+    }
+  }
+}
+```
+
+**Notes:**
+- `side: "B"` filters for buys only; use `"A"` for sells (asks)
+- Combine with `dir` to distinguish between "Open Long" (new position) and "Close Short" (closing)
+- To compare buys vs sells, run two queries or use `fills: [{}]` and filter client-side
 
 ---
 
@@ -289,7 +388,7 @@ Hyperliquid timestamps are in **milliseconds**. Divide by 1000 when comparing wi
 
 ### Mistake 6: Confusing Hyperliquid Datasets
 
-- `hyperliquid-fills` - Trade fills data (this skill, use `"type": "hyperliquidFills"`)
+- `hyperliquid-fills` - Trade fills data (use `"type": "hyperliquidFills"`)
 - `hyperliquid-mainnet` - HyperEVM chain (use `"type": "evm"`)
 - `hyperliquid-testnet` - HyperEVM testnet (use `"type": "evm"`)
 
@@ -318,58 +417,9 @@ POST https://portal.sqd.dev/datasets/hyperliquid-fills/stream
 ```
 
 ---
-
-## Response Format
-
-Portal returns **JSON Lines** (one JSON object per line):
-
-```json
-{"header":{"number":800000000,"timestamp":1763423558592}}
-{"fills":[{"user":"0x258a0cb38645842d58e893850bae2e4b66c1e6a8","coin":"STRK","px":0.19485,"sz":4000.0,"side":"B","startPosition":-500790.3,"dir":"Close Short","closedPnl":-108.16,"hash":"0x14eb...","oid":239170781574,"crossed":true,"fee":0.231871,"builderFee":null,"tid":257728986102969,"cloid":"0x019a...","feeToken":"USDC"}]}
-```
-
-**Parsing:** Split by newlines, parse each line as JSON. First line = block header. Numeric values (`px`, `sz`, `closedPnl`, `fee`) are floats.
-
----
-
 ## Performance Tips
 
 - **Use specific coin filters** when possible - filtering by `coin` narrows results significantly
 - **Use narrow block ranges** for broad queries (e.g., all fills with `{}` filter)
 - **Combine filters** - use `coin` + `side` or `coin` + `user` for targeted queries
 - **Request only needed fields** - omit `hash`, `cloid`, `builderFee` if not needed
-
----
-
-## MCP Tools vs Raw API
-
-If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
-
-| Approach | When to Use |
-|----------|------------|
-| **MCP `portal_query_hyperliquid_fills`** | Standard queries by user, coin, direction, timeframe. Fastest path — no block math needed |
-| **Raw Stream API (curl/fetch)** | Custom field selection, builder fee analysis, or streaming large datasets to files |
-
-**Example — MCP quick path:**
-Use `portal_query_hyperliquid_fills` with `coin: ["BTC", "ETH"]`, `timeframe: "24h"`. Set `include_pnl: true` for PnL tracking.
-
-**Example — when to use raw API:**
-When you need `include_builder_info: true` for builder fee analysis, or when piping millions of fills to a file for offline processing.
-
----
-
-## Related Skills
-
-- **portal-query-evm-logs** - Query EVM event logs on HyperEVM (`hyperliquid-mainnet`)
-- **portal-query-evm-transactions** - Query EVM transactions on HyperEVM
-- **portal-dataset-discovery** - Find correct dataset names and metadata
-
----
-
-## Additional Resources
-
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API querying
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
-- **Hyperliquid Overview:** https://beta.docs.sqd.dev/en/portal/hyperliquid/overview
-- **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml)** - Complete fills query specification
-- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported networks

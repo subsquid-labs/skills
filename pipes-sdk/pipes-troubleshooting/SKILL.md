@@ -22,6 +22,9 @@ Activate when:
 - Database connection issues
 - Portal API errors or timeouts
 - User mentions "error", "not working", "broken", "failed", or "bug"
+- User complains indexer is too slow or wants performance optimization
+- User asks how to speed up sync or reduce sync time
+- User mentions "slow", "performance", "optimize", or "faster"
 
 ## Important Note
 
@@ -696,7 +699,7 @@ Before declaring success:
 ## Related Skills
 
 - [pipes-new-indexer](../pipes-new-indexer/SKILL.md) - Create new indexers
-- [pipes-performance](../pipes-performance/SKILL.md) - Optimize slow indexers
+- [PERFORMANCE.md](references/PERFORMANCE.md) - Optimize slow indexers
 - [pipes-new-indexer ABI_GUIDE](../pipes-new-indexer/references/ABI_GUIDE.md) - Fetch contract ABIs and handle proxies
 - [pipes-new-indexer SCHEMA_GUIDE](../pipes-new-indexer/references/SCHEMA_GUIDE.md) - Design ClickHouse schemas
 
@@ -707,7 +710,7 @@ This skill includes comprehensive reference documentation in the `references/` d
 - **[PATTERNS.md](references/PATTERNS.md)** - Common indexing patterns, performance optimization, error patterns, and best practices
 - **[STREAM_RESILIENCE.md](references/STREAM_RESILIENCE.md)** - Keeping long-running indexers alive: retry patterns, process supervisors (pm2), nohup for dev sessions
 - **[CLICKHOUSE_ANALYTICS.md](references/CLICKHOUSE_ANALYTICS.md)** - Query patterns for dashboards: time bucketing, conditional aggregation, parameterized WHERE clauses, performance tips
-- **[TRADINGVIEW_PATTERNS.md](references/TRADINGVIEW_PATTERNS.md)** - TradingView Lightweight Charts: dark theme, series types, crosshair sync, live polling, responsive layout
+- **[PERFORMANCE.md](references/PERFORMANCE.md)** - Sync speed optimization: start block adjustment, contract filtering, benchmarks
 
 ### How to Access
 
@@ -716,7 +719,7 @@ This skill includes comprehensive reference documentation in the `references/` d
 cat pipes-sdk/pipes-troubleshooting/references/PATTERNS.md
 cat pipes-sdk/pipes-troubleshooting/references/STREAM_RESILIENCE.md
 cat pipes-sdk/pipes-troubleshooting/references/CLICKHOUSE_ANALYTICS.md
-cat pipes-sdk/pipes-troubleshooting/references/TRADINGVIEW_PATTERNS.md
+cat pipes-sdk/pipes-troubleshooting/references/PERFORMANCE.md
 ```
 
 Or use Claude Code's Read tool:

@@ -1,25 +1,4 @@
----
-name: portal-query-evm-logs
-description: Construct SQD Portal Stream API queries for EVM event logs. Track token transfers, DeFi events, and on-chain activity using indexed topic filters.
-allowed-tools: [Bash, WebFetch, WebSearch]
-metadata:
-  author: subsquid
-  version: "2.0.0"
-  category: portal-core
----
-
-## When to Use This Skill
-
-Use this skill when you need to:
-- Track ERC20 token transfers (Transfer events)
-- Monitor DeFi protocol events (Swap, Deposit, Withdraw, etc.)
-- Find events emitted by specific contracts
-- Filter events by indexed parameters (addresses, token IDs, etc.)
-- Analyze historical on-chain activity
-
-**This is the most common Portal use case** - most blockchain data analysis involves event logs.
-
----
+# EVM Event Logs — Query Reference
 
 ## Query Structure
 
@@ -195,7 +174,189 @@ Padded:   0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045
 **Contract:** Aave V3 Pool | **Events:** Deposit + Withdraw
 **Notes:** Multiple filter objects in `logs` array = OR logic (both events returned)
 
-> **More examples:** See `references/additional-examples.md` for NFT transfers, multi-token queries, NFT minting, ERC-1155, and multi-collection tracking.
+---
+
+## More Examples
+
+### Example 5: NFT Transfers to Specific Address
+
+**Use case:** Track NFT transfers to a specific wallet address.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 17000000,
+  "toBlock": 17001000,
+  "logs": [{
+    "address": ["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"],
+    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
+    "topic2": ["0x000000000000000000000000742d35cc6634c0532925a3b844bc454e4438f44e"]
+  }],
+  "fields": {
+    "log": {
+      "address": true,
+      "topics": true,
+      "data": true,
+      "transactionHash": true
+    },
+    "block": {
+      "number": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contract:** Bored Ape Yacht Club
+**Event:** Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+**Notes:**
+- ERC721 Transfer events have 3 indexed parameters: `from`, `to`, `tokenId`
+- `topic1` = from address, `topic2` = to address, `topic3` = token ID
+- Compare with ERC20: only 2 indexed parameters (`from`, `to`), amount is in `data`
+
+---
+
+### Example 6: Query Multiple ERC-20 Tokens Simultaneously
+
+**Use case:** Track transfers across multiple stablecoins (USDC, USDT, DAI) in one query.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "logs": [{
+    "address": [
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    ],
+    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "log": {
+      "address": true,
+      "topics": true,
+      "data": true,
+      "transactionHash": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contracts:** USDC, USDT, DAI
+**Notes:** Multiple addresses in array = OR logic; efficient way to track multiple tokens without separate queries.
+
+---
+
+### Example 7: Monitor NFT Minting Events
+
+**Use case:** Capture NFT creation events (transfers from zero address).
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "logs": [{
+    "address": ["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"],
+    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"],
+    "topic1": ["0x0000000000000000000000000000000000000000000000000000000000000000"]
+  }],
+  "fields": {
+    "log": {
+      "address": true,
+      "topics": true,
+      "transactionHash": true
+    },
+    "block": {
+      "number": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contract:** Bored Ape Yacht Club
+**Notes:**
+- Minting is represented as a transfer from the zero address
+- `topic1` = zero address (0x000...000 padded to 32 bytes)
+- `topic2` = recipient address (minter)
+
+---
+
+### Example 8: Track ERC-1155 Multi-Token Transfers
+
+**Use case:** Monitor ERC-1155 TransferSingle and TransferBatch events.
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "logs": [{
+    "address": ["0x495f947276749Ce646f68AC8c248420045cb7b5e"],
+    "topic0": [
+      "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62",
+      "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb"
+    ]
+  }],
+  "fields": {
+    "log": {
+      "address": true,
+      "topics": true,
+      "data": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contract:** OpenSea Shared Storefront (ERC-1155)
+**Event Signatures:**
+- TransferSingle: `0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62`
+- TransferBatch: `0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb`
+
+---
+
+### Example 9: Monitor Multiple NFT Collections
+
+**Use case:** Track transfers across popular NFT collections (BAYC, MAYC, CryptoPunks).
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 18000000,
+  "toBlock": 18010000,
+  "logs": [{
+    "address": [
+      "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
+      "0x60E4d786628Fea6478F785A6d7e704777c86a7c6",
+      "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
+    ],
+    "topic0": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
+  }],
+  "fields": {
+    "block": {
+      "number": true,
+      "timestamp": true
+    },
+    "log": {
+      "address": true,
+      "topics": true,
+      "transactionHash": true
+    }
+  }
+}
+```
+
+**Dataset:** `ethereum-mainnet`
+**Contracts:** BAYC, MAYC, CryptoPunks
 
 ---
 
@@ -234,56 +395,46 @@ Padded:   0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045
 
 ## Common Mistakes
 
-### ❌ Filtering by Non-Indexed Parameter
+### Filtering by Non-Indexed Parameter
 
 ```json
-{"logs": [{"data": ["0x1234..."]}]}  // ❌ Can't filter by data
+{"logs": [{"data": ["0x1234..."]}]}  // WRONG - Can't filter by data
 ```
 **Fix:** Only topic0-3 are filterable. Fetch all events and filter `data` client-side.
 
 ---
 
-### ❌ Forgetting Topic Padding
+### Forgetting Topic Padding
 
 ```json
-{"topic1": ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]}  // ❌ Not padded
+{"topic1": ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"]}  // WRONG - Not padded
 ```
 **Fix:** Pad addresses to 32 bytes: `"0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045"`
 
 ---
 
-### ❌ Using Wrong Event Signature
+### Using Wrong Event Signature
 
 Compute correct keccak256 hash with no spaces and exact types:
 ```javascript
-ethers.id("Transfer(address,address,uint256)")  // ✅ correct
-ethers.id("Transfer(address, address, uint256)")  // ❌ spaces cause wrong hash
+ethers.id("Transfer(address,address,uint256)")  // correct
+ethers.id("Transfer(address, address, uint256)")  // WRONG - spaces cause wrong hash
 ```
 
 ---
 
-### ❌ Too Broad Query (No Filters)
+### Too Broad Query (No Filters)
 
 ```json
-{"type": "evm", "fromBlock": 0, "logs": [{}]}  // ❌ Millions of logs
+{"type": "evm", "fromBlock": 0, "logs": [{}]}  // WRONG - Millions of logs
 ```
 **Fix:** Always filter by at least `address` or `topic0`, and use reasonable block ranges.
 
 ---
 
-### ❌ Wrong Dataset Name
-
-```
-POST /datasets/arbitrum/stream  // ❌ Wrong name
-POST /datasets/arbitrum-one/stream  // ✅ Correct
-```
-See **portal-dataset-discovery** skill for full mapping.
-
----
-
 ## Verifying Event Signatures Before Indexing
 
-> **⚠️ Always verify topic0 hashes against actual on-chain data before building an indexer.** Computed hashes from ABIs can be wrong for proxy contracts, Diamond proxies (EIP-2535), or contracts that changed event signatures across upgrades.
+> Always verify topic0 hashes against actual on-chain data before building an indexer. Computed hashes from ABIs can be wrong for proxy contracts, Diamond proxies (EIP-2535), or contracts that changed event signatures across upgrades.
 
 **Verification workflow:**
 
@@ -295,54 +446,3 @@ See **portal-dataset-discovery** skill for full mapping.
 - wBETH: Computed `Deposit(address,uint256)` hash but actual event was `Deposit(address,address,uint256,uint256)` (extra params)
 - Pendle: `SwapYtAndToken` event changed data layout between Router V1 and V3 — older events cause `EventDecodingError` with the current ABI
 - Diamond proxies: Multiple facets emit different events through the same address — ABI from one facet misses events from others
-
----
-
-## Response Format
-
-Portal returns **JSON Lines** (one JSON object per line):
-
-```json
-{"header":{"number":19500000,"hash":"0x...","parentHash":"0x...","timestamp":1234567890}}
-{"logs":[{"address":"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913","topics":["0xddf252ad...","0x000...123","0x000...456"],"data":"0x000...789","transactionHash":"0xabc...","logIndex":42}]}
-```
-
-**Parsing:** Split by newlines, parse each line as JSON. First line = block header.
-
----
-
-## MCP Tools vs Raw API
-
-If Portal MCP tools are available in your environment, use them for quick queries before falling back to the raw Stream API:
-
-| Approach | When to Use |
-|----------|------------|
-| **MCP `portal_query_logs`** | Quick queries with standard filters (address, topic0-3, block range). Fastest path — no curl needed |
-| **MCP `portal_decode_logs`** | Auto-decode known events (Transfer, Swap, Deposit, etc.) without computing topic0 yourself |
-| **MCP `portal_count_events`** | Count events by contract or event type without fetching full data (~99% smaller response) |
-| **Raw Stream API (curl/fetch)** | Complex filter combinations, custom field selection, piping to files, or when MCP tools aren't available |
-
-**Example — MCP quick path:**
-Use `portal_query_logs` with `addresses`, `topic0`, `from_block`, `to_block` parameters. It handles the POST request and JSON parsing for you.
-
-**Example — when to use raw API:**
-When you need `include_transaction: true` to join log data with parent transaction fields, or when streaming large datasets to files.
-
----
-
-## Related Skills
-
-- **portal-query-evm-transactions** - Query transactions that emitted these logs
-- **portal-query-evm-traces** - Track internal calls related to events
-- **portal-dataset-discovery** - Find correct dataset name for your chain
-
----
-
-## Additional Resources
-
-- **API Documentation:** https://beta.docs.sqd.dev/api/catalog/stream
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick reference for Portal API logs querying
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete Portal documentation
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Complete logs query specification
-- **[Available Datasets](https://portal.sqd.dev/datasets)** - All supported EVM networks
-- **Event Signature Calculator:** https://www.4byte.directory/

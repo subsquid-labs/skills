@@ -2,7 +2,7 @@
 
 ![Experimental](https://img.shields.io/badge/experimental-blue)
 
-4 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
+2 skills for AI coding agents working with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) - a lightweight TypeScript framework for building blockchain indexers.
 
 ## Installation
 
@@ -18,19 +18,10 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk
 
 ## Available Skills
 
-### Core Skills
-
 | Skill | Use Case |
 |-------|----------|
-| **pipes-new-indexer** | Create blockchain indexer projects using the Pipes CLI with templates for EVM, Solana, and Hyperliquid chains; includes ABI fetching, schema design, and protocol research guides |
-| **pipes-troubleshooting** | Diagnose and fix runtime errors in blockchain indexers |
-| **pipes-performance** | Analyze and optimize indexer sync performance |
-
-### Deployment Skills
-
-| Skill | Use Case |
-|-------|----------|
-| **pipes-deploy** | Deploy indexers to local ClickHouse (Docker) for development or ClickHouse Cloud for production |
+| **pipes-new-indexer** | Create and deploy blockchain indexer projects using the Pipes CLI with templates for EVM, Solana, and Hyperliquid chains; includes ABI fetching, schema design, protocol research, and deployment to local Docker or ClickHouse Cloud |
+| **pipes-troubleshooting** | Diagnose and fix runtime errors, optimize sync performance, and validate data quality |
 
 ## Usage
 
@@ -51,31 +42,25 @@ Skills are automatically available once installed. The agent will use them when 
    ```
    Uses: `pipes-new-indexer`
 
-2. **Debug issues:**
+2. **Debug issues or optimize:**
    ```
    My indexer shows "No data in database after 60 seconds"
+   How can I make my indexer sync faster?
    ```
    Uses: `pipes-troubleshooting`
 
-3. **Optimize performance:**
-   ```
-   How can I make my indexer sync faster?
-   ```
-   Uses: `pipes-performance`
-
-4. **Deploy to production:**
+3. **Deploy to production:**
    ```
    Deploy my indexer to ClickHouse Cloud
    ```
-   Uses: `pipes-deploy`
+   Uses: `pipes-new-indexer` (see references/DEPLOYMENT.md)
 
 ## Skill Structure
 
 Each skill contains:
 
 - `SKILL.md` - Instructions for the agent
-- `templates/` - Extra templates for references (optional)
-- `references/` - Supporting documentation (optional)
+- `references/` - Supporting documentation (ABI guide, schema design, deployment, performance, etc.)
 
 ## Resources
 

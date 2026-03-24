@@ -8,7 +8,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 ## Products
 
-### Pipes SDK (4 skills)
+### Pipes SDK (2 skills)
 
 Lightweight TypeScript framework for building blockchain indexers.
 
@@ -37,7 +37,7 @@ npx skills add subsquid-labs/agent-skills/squid-sdk --all
 
 ---
 
-### Portal (6 skills)
+### Portal (1 skill)
 
 Query and analyze blockchain data across 210+ chains without infrastructure.
 
