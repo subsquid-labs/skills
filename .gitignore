@@ -29,3 +29,8 @@ tmp/
 dist/
 build/
 *.zip
+
+# Local config
+CLAUDE.md
+CLI_FEEDBACK.md
+CONTRIBUTING.md
