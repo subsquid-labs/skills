@@ -41,6 +41,7 @@
 
 | Common Name | Portal Dataset Name | Type |
 |-------------|-------------------|------|
+| Bitcoin | `bitcoin-mainnet` | Bitcoin |
 | Solana | `solana-mainnet` | Solana |
 | HyperEVM | `hyperliquid-mainnet` | EVM |
 | HyperEVM Testnet | `hyperliquid-testnet` | EVM |

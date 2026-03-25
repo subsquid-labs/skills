@@ -1,6 +1,6 @@
 ---
 name: portal-query
-description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, and Hyperliquid fills with dataset discovery and verification.
+description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
@@ -10,7 +10,7 @@ metadata:
 
 # Portal: Query Blockchain Data
 
-Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, and Hyperliquid fills.
+Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, Hyperliquid fills, and Bitcoin blocks, transactions, inputs, and outputs.
 
 ## When to Use This Skill
 
@@ -43,6 +43,7 @@ Use this skill when you need to:
 | Linea | `linea-mainnet` | EVM |
 | Gnosis | `gnosis-mainnet` | EVM |
 | Solana | `solana-mainnet` | Solana |
+| Bitcoin | `bitcoin-mainnet` | Bitcoin |
 | Hyperliquid Fills | `hyperliquid-fills` | HyperliquidFills |
 | HyperEVM | `hyperliquid-mainnet` | EVM |
 
@@ -75,6 +76,7 @@ Or use MCP: `portal_list_datasets` with `query: "arbitrum"` to search.
 | Wallet activity, function calls | **EVM Transactions** | `references/evm-transactions.md` | `"type": "evm"` |
 | Internal calls, contract deployments | **EVM Traces** | `references/evm-traces.md` | `"type": "evm"` |
 | Solana program calls, SPL transfers | **Solana Instructions** | `references/solana.md` | `"type": "solana"` |
+| Bitcoin transactions, UTXOs, addresses | **Bitcoin** | `references/bitcoin.md` | `"type": "bitcoin"` |
 | Hyperliquid perpetual fills | **Hyperliquid Fills** | `references/hyperliquid.md` | `"type": "hyperliquidFills"` |
 
 **Each reference file contains:** query structure, filter fields, indexing status, examples, and data-type-specific gotchas.
@@ -95,7 +97,7 @@ Accept: application/x-ndjson
 
 ```json
 {
-  "type": "<evm|solana|hyperliquidFills>",
+  "type": "<evm|solana|bitcoin|hyperliquidFills>",
   "fromBlock": <start-block>,
   "toBlock": <end-block>,
   "<data-key>": [{ <filters> }],
@@ -111,6 +113,9 @@ Accept: application/x-ndjson
 | EVM Transactions | `"transactions"` | `"transaction"` |
 | EVM Traces | `"traces"` | `"trace"` |
 | Solana Instructions | `"instructions"` | `"instruction"` |
+| Bitcoin Transactions | `"transactions"` | `"transaction"` |
+| Bitcoin Inputs | `"inputs"` | `"input"` |
+| Bitcoin Outputs | `"outputs"` | `"output"` |
 | Hyperliquid Fills | `"fills"` | `"fill"` |
 
 ### Quick Examples
@@ -136,6 +141,17 @@ Dataset: `base-mainnet`
 }
 ```
 Dataset: `solana-mainnet`
+
+**Bitcoin: Payments to an Address**
+```json
+{
+  "type": "bitcoin",
+  "fromBlock": 942000, "toBlock": 942100,
+  "outputs": [{"scriptPubKeyAddress": ["bc1qxhmdufsvnuaaaer4ynz88fspdsxq2h9e9cetdj"], "transaction": true}],
+  "fields": {"block": {"number": true, "timestamp": true}, "transaction": {"txid": true}, "output": {"value": true, "scriptPubKeyAddress": true}}
+}
+```
+Dataset: `bitcoin-mainnet`
 
 **Hyperliquid: BTC Fills**
 ```json
@@ -241,6 +257,7 @@ Every query MUST include `type`.
 ### Wrong `type` for Dataset
 - EVM chains (Ethereum, Arbitrum, Base, etc.) → `"type": "evm"`
 - Solana → `"type": "solana"`
+- Bitcoin → `"type": "bitcoin"` (NOT `"evm"`)
 - Hyperliquid fills → `"type": "hyperliquidFills"`
 - HyperEVM (`hyperliquid-mainnet`) → `"type": "evm"` (NOT `"hyperliquidFills"`)
 
@@ -269,6 +286,7 @@ Always add address/topic/programId filters and reasonable block ranges.
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** — Complete Portal documentation
 - **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** — EVM API specification
 - **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** — Solana API specification
+- **[Bitcoin OpenAPI Schema](https://beta.docs.sqd.dev/files/bitcoin-openapi.yaml)** — Bitcoin API specification
 - **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml)** — Hyperliquid API specification
 - **Event Signature Calculator:** https://www.4byte.directory/
 - **Function Selector Database:** https://www.4byte.directory/
