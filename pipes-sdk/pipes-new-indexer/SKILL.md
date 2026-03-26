@@ -682,6 +682,7 @@ If the CLI fails:
    - **Is there a specific contract, pool, or address?** (Important for customization)
    - **Time range needed?** (Recent data only = faster, full history = slower)
    - Where should the data be stored? (ClickHouse, PostgreSQL, CSV)
+   - **Environment decision (MANDATORY):** Use existing DB installation/Clickhouse Cloud OR spin up a new Docker container? Do NOT create any Docker containers without explicit user confirmation. If user asks for not using Docker, remove everything docker-related from the project.
    - What should the project be named?
 
 3. **Check for proxy contracts (MANDATORY for custom template):**
