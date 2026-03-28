@@ -37,6 +37,23 @@
 | Fantom | `fantom-mainnet` | EVM |
 | Berachain | `berachain-mainnet` | EVM |
 
+## Substrate Chains
+
+| Common Name | Portal Dataset Name | Type |
+|-------------|-------------------|------|
+| Polkadot | `polkadot` | Substrate |
+| Kusama | `kusama` | Substrate |
+| Acala | `acala-substrate` | Substrate |
+| Astar (Substrate) | `astar-substrate` | Substrate |
+| Moonbeam (Substrate) | `moonbeam-substrate` | Substrate |
+| Moonriver (Substrate) | `moonriver-substrate` | Substrate |
+| Phala | `phala` | Substrate |
+| Subsocial | `subsocial` | Substrate |
+
+> **Note:** Frontier EVM parachains (Moonbeam, Astar) have both EVM and Substrate datasets. Use `-substrate` suffix for Substrate queries with `"type": "substrate"`. Use the EVM dataset (e.g., `moonbeam-mainnet`) with `"type": "evm"` for EVM-only queries.
+
+> **Important:** Real-time streaming is NOT supported for Substrate chains. Only finalized historical data is available.
+
 ## Non-EVM Chains
 
 | Common Name | Portal Dataset Name | Type |
@@ -93,6 +110,9 @@ Different platforms use different names for the same chains:
   "Moonbeam": "moonbeam-mainnet",
   "Moonriver": "moonriver-mainnet",
   "Mode": "mode-mainnet",
+  "Polkadot": "polkadot",
+  "Kusama": "kusama",
+  "Moonbeam (Substrate)": "moonbeam-substrate",
   "Solana": "solana-mainnet",
   "Hyperliquid Fills": "hyperliquid-fills",
   "HyperEVM": "hyperliquid-mainnet"

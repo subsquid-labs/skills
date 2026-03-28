@@ -1,6 +1,6 @@
 ---
 name: portal-query
-description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
+description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
@@ -10,12 +10,12 @@ metadata:
 
 # Portal: Query Blockchain Data
 
-Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, Hyperliquid fills, and Bitcoin blocks, transactions, inputs, and outputs.
+Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin blocks, transactions, inputs, and outputs.
 
 ## When to Use This Skill
 
 Use this skill when you need to:
-- Query blockchain event logs, transactions, traces, instructions, or trade fills
+- Query blockchain event logs, transactions, traces, instructions, Substrate events/calls, or trade fills
 - Find the correct Portal dataset name for a blockchain
 - Analyze on-chain activity (token transfers, DeFi events, contract deployments, trading)
 - Use Portal MCP tools or the raw Stream API
@@ -42,6 +42,9 @@ Use this skill when you need to:
 | Scroll | `scroll-mainnet` | EVM |
 | Linea | `linea-mainnet` | EVM |
 | Gnosis | `gnosis-mainnet` | EVM |
+| Polkadot | `polkadot` | Substrate |
+| Kusama | `kusama` | Substrate |
+| Moonbeam (Substrate) | `moonbeam-substrate` | Substrate |
 | Solana | `solana-mainnet` | Solana |
 | Bitcoin | `bitcoin-mainnet` | Bitcoin |
 | Hyperliquid Fills | `hyperliquid-fills` | HyperliquidFills |
@@ -76,6 +79,7 @@ Or use MCP: `portal_list_datasets` with `query: "arbitrum"` to search.
 | Wallet activity, function calls | **EVM Transactions** | `references/evm-transactions.md` | `"type": "evm"` |
 | Internal calls, contract deployments | **EVM Traces** | `references/evm-traces.md` | `"type": "evm"` |
 | Solana program calls, SPL transfers | **Solana Instructions** | `references/solana.md` | `"type": "solana"` |
+| Polkadot/Kusama events, calls, staking | **Substrate** | `references/substrate.md` | `"type": "substrate"` |
 | Bitcoin transactions, UTXOs, addresses | **Bitcoin** | `references/bitcoin.md` | `"type": "bitcoin"` |
 | Hyperliquid perpetual fills | **Hyperliquid Fills** | `references/hyperliquid.md` | `"type": "hyperliquidFills"` |
 
@@ -97,7 +101,7 @@ Accept: application/x-ndjson
 
 ```json
 {
-  "type": "<evm|solana|bitcoin|hyperliquidFills>",
+  "type": "<evm|solana|substrate|bitcoin|hyperliquidFills>",
   "fromBlock": <start-block>,
   "toBlock": <end-block>,
   "<data-key>": [{ <filters> }],
@@ -113,6 +117,8 @@ Accept: application/x-ndjson
 | EVM Transactions | `"transactions"` | `"transaction"` |
 | EVM Traces | `"traces"` | `"trace"` |
 | Solana Instructions | `"instructions"` | `"instruction"` |
+| Substrate Events | `"events"` | `"event"` |
+| Substrate Calls | `"calls"` | `"call"` |
 | Bitcoin Transactions | `"transactions"` | `"transaction"` |
 | Bitcoin Inputs | `"inputs"` | `"input"` |
 | Bitcoin Outputs | `"outputs"` | `"output"` |
@@ -141,6 +147,19 @@ Dataset: `base-mainnet`
 }
 ```
 Dataset: `solana-mainnet`
+
+**Substrate: DOT Transfers on Polkadot**
+```json
+{
+  "type": "substrate",
+  "fromBlock": 20000000, "toBlock": 20000100,
+  "events": [{"name": ["Balances.Transfer"]}],
+  "fields": {"block": {"number": true, "timestamp": true}, "event": {"name": true, "args": true}}
+}
+```
+Dataset: `polkadot`
+
+> **Note:** Real-time streaming is not supported for Substrate chains. Only finalized historical data is available.
 
 **Bitcoin: Payments to an Address**
 ```json
@@ -257,9 +276,11 @@ Every query MUST include `type`.
 ### Wrong `type` for Dataset
 - EVM chains (Ethereum, Arbitrum, Base, etc.) → `"type": "evm"`
 - Solana → `"type": "solana"`
+- Substrate chains (Polkadot, Kusama, parachains) → `"type": "substrate"` (NOT `"evm"`)
 - Bitcoin → `"type": "bitcoin"` (NOT `"evm"`)
 - Hyperliquid fills → `"type": "hyperliquidFills"`
 - HyperEVM (`hyperliquid-mainnet`) → `"type": "evm"` (NOT `"hyperliquidFills"`)
+- Frontier parachains (`moonbeam-substrate`) → `"type": "substrate"` (NOT `"evm"`; use `evmLogs` filter)
 
 ### Too Broad Query
 ```json
@@ -286,6 +307,7 @@ Always add address/topic/programId filters and reasonable block ranges.
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** — Complete Portal documentation
 - **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** — EVM API specification
 - **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** — Solana API specification
+- **[Substrate OpenAPI Schema](https://beta.docs.sqd.dev/files/substrate-openapi.yaml)** — Substrate API specification
 - **[Bitcoin OpenAPI Schema](https://beta.docs.sqd.dev/files/bitcoin-openapi.yaml)** — Bitcoin API specification
 - **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml)** — Hyperliquid API specification
 - **Event Signature Calculator:** https://www.4byte.directory/
