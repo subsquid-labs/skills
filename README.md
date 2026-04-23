@@ -1,7 +1,5 @@
 # SQD Agent Skills
 
-![Experimental](https://img.shields.io/badge/experimental-blue)
-
 A collection of skills for AI coding agents working with SQD products. Skills extend agent capabilities for building, deploying, and optimizing blockchain indexers and data pipelines.
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
