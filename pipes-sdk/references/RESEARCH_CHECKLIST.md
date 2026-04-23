@@ -224,8 +224,8 @@ This data enables:
 ### After research approved:
 - **ABI_GUIDE.md**: Fetch full ABI from block explorer and generate TypeScript types
 - **SCHEMA_GUIDE.md**: Design ClickHouse schema for the indexed events
-- **pipes-new-indexer**: Generate indexer project
-- **pipes-troubleshooting**: Debug if issues arise
+- **TEMPLATES.md**: Pick the right CLI template and generate the project
+- **TROUBLESHOOTING.md**: Debug if issues arise
 
 ## Related Documentation
 

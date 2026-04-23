@@ -488,9 +488,9 @@ diff /tmp/schema_tables.txt /tmp/code_tables.txt
 
 ## Related Documentation
 
-- [pipes-new-indexer](../SKILL.md) - Create indexers
-- [pipes-troubleshooting](../../pipes-troubleshooting/SKILL.md) - Fix errors
-- [PERFORMANCE.md](../../pipes-troubleshooting/references/PERFORMANCE.md) - Optimize performance
+- [pipes-sdk SKILL.md](../SKILL.md) — scaffolding, troubleshooting, validation
+- [PERFORMANCE.md](./PERFORMANCE.md) — sync speed optimization
+- [STREAM_RESILIENCE.md](./STREAM_RESILIENCE.md) — long-running indexers (pm2, nohup)
 
 ## Official Subsquid Documentation
 

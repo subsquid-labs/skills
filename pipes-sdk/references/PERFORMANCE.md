@@ -285,14 +285,11 @@ Don't optimize if:
 - Current performance meets requirements
 - Optimization would lose required data
 
-## Related Skills
+## Related
 
-- [pipes-troubleshooting](../SKILL.md) - Fix errors and validate data
-- [pipes-new-indexer](../../pipes-new-indexer/SKILL.md) - Create indexers
-
-## Related Documentation
-
-- [PATTERNS.md](./PATTERNS.md) - Performance optimization patterns and benchmarks
+- [pipes-sdk SKILL.md](../SKILL.md) — scaffolding, troubleshooting, validation
+- [PATTERNS.md](./PATTERNS.md) — performance patterns and benchmarks
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — error patterns and fixes
 
 ## Official Subsquid Documentation
 

@@ -191,4 +191,4 @@ If it always resumes from the same block and crashes:
 ## Related
 
 - [PATTERNS.md](./PATTERNS.md) — General indexing patterns
-- [pipes-troubleshooting SKILL.md](../SKILL.md) — Error Pattern 2 (Portal API Connection Failed)
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — Error Pattern 2 (Portal API Connection Failed)

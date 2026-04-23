@@ -1,14 +1,14 @@
 ---
-name: portal-query
+name: portal
 description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
-  version: "1.1.1"
+  version: "1.2.0"
   category: portal-core
 ---
 
-# Portal: Query Blockchain Data
+# Portal
 
 Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin blocks, transactions, inputs, and outputs.
 
