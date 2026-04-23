@@ -210,20 +210,6 @@ clickhouseTarget({
 })
 ```
 
-### 6. CLI `ora` ESM/CJS Crash on Init
-
-**ERROR**: `(0 , import_ora.default) is not a function`
-
-**Cause**: CLI bundles `ora` v6+ (ESM-only) as CJS. The `__toESM(require("ora"))` wrapper fails.
-
-**Only affects**: `init` command. `--schema` and `--version` work fine.
-
-**Solution**: Patch the cached CLI bundle:
-```bash
-CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
-sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
-```
-
 ## Common Issues and Solutions (Continued)
 
 ### Issue 7: Indexer Crashed Mid-Sync — How to Resume

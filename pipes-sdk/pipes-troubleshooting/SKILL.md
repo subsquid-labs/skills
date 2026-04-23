@@ -482,29 +482,6 @@ TypeError: Cannot read properties of undefined (reading 'from')
 
 **Prevention**: Always pass `range` in `addFill()`. The dataset starts at block 750,000,000.
 
-### Error Pattern 11: CLI Crashes on `init` — ora ESM/CJS Error
-
-**Symptoms**:
-```
-[PIPES SDK] Error: (0 , import_ora.default) is not a function
-```
-
-**Diagnosis**: The CLI is bundled as CJS but imports `ora` v6+ which is ESM-only. Only `init` is affected; `--schema` and `--version` work fine.
-
-**Fix**: Patch the CLI bundle to replace ora with a no-op spinner:
-```bash
-CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
-sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
-```
-
-Then re-run the `init` command.
-
-**WARNING**: `npx` may silently re-download and overwrite the patch. Always verify before running `init`:
-```bash
-CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
-grep -q 'import_ora = { default: function' "$CLI_PATH" && echo "Patched" || echo "Needs patching"
-```
-
 ## Data Validation & Quality Checks
 
 After an indexer completes successfully, validate the data quality to ensure production readiness.
