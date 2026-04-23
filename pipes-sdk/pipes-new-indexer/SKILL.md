@@ -587,29 +587,6 @@ it('should test custom transformations', async () => {
 
 ## How to Use the CLI
 
-### CLI Known Issue: `ora` ESM/CJS Crash
-
-The CLI `init` command crashes with `(0 , import_ora.default) is not a function` on **every** `init` call. This is because the CLI bundles ESM-only `ora` v6+ as CJS. The `--schema` and `--version` commands still work.
-
-**IMPORTANT: This happens on every `init` call, not just the first time.** Additionally, `npx` may re-download the CLI at any time, overwriting any previous patch. You must patch before every `init`.
-
-**Automatic pre-flight patch (MANDATORY before every `init`):**
-
-Run this before EVERY `npx @iankressin/pipes-cli@latest init` call:
-```bash
-# Pre-flight: ensure CLI is cached, then patch ora
-npx @iankressin/pipes-cli@latest --version 2>/dev/null || true
-CLI_PATH=$(find ~/.npm/_npx -name "index.cjs" -path "*pipes-cli*" 2>/dev/null | head -1)
-if [ -n "$CLI_PATH" ] && ! grep -q 'import_ora = { default: function' "$CLI_PATH"; then
-  sed -i.bak 's/var import_ora = __toESM(require("ora"), 1);/var import_ora = { default: function(opts) { var t = typeof opts === "string" ? opts : (opts \&\& opts.text) || ""; return { start: function(m) { console.log(m || t); return this; }, succeed: function(m) { console.log(m || t); return this; }, fail: function(m) { console.log(m || t); return this; }, stop: function() { return this; }, text: t }; } };/' "$CLI_PATH"
-  echo "ora patch applied"
-else
-  echo "ora patch already in place (or CLI not found)"
-fi
-```
-
-**When using this skill programmatically, ALWAYS run the pre-flight patch as a single block immediately before the `init` command.** Do not assume a previous patch is still in place.
-
 ### Programmatic Mode (RECOMMENDED for Claude Code)
 
 ALWAYS use programmatic mode with the published npm package:
