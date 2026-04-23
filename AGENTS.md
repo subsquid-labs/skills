@@ -6,77 +6,81 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 A collection of skills for AI coding agents working with SQD products. Skills extend agent capabilities for building blockchain indexers (Pipes SDK) and querying on-chain data (Portal).
 
+## Current Structure
+
+Skills live at the repo root. The skill directory name matches the skill's frontmatter `name`.
+
+```
+pipes-sdk/                 # Build, deploy, troubleshoot Pipes SDK indexers
+  SKILL.md
+  references/
+portal/                    # Query SQD Portal across 210+ chains
+  SKILL.md
+  references/
+squid-sdk/
+  squid-perf/              # Sync-time performance comparison for Squid SDK
+    SKILL.md
+    scripts/
+    templates/
+```
+
 ## Creating a New Skill
 
 ### Directory Structure
 
 ```
-{product}/
-  {skill-name}/           # kebab-case with product prefix
-    SKILL.md              # Required: skill definition
-    scripts/              # Optional: executable scripts
-    references/           # Optional: supporting documentation
-```
-
-**Current structure:**
-```
-pipes-sdk/
-  pipes-new-indexer/      # Create and deploy indexers
-  pipes-troubleshooting/  # Debug errors and optimize performance
-portal/
-  portal-query/           # Query blockchain data across all chains
+{skill-name}/              # kebab-case with product prefix (e.g., sqd-*)
+  SKILL.md                 # Required: skill definition
+  scripts/                 # Optional: executable scripts
+  references/              # Optional: supporting documentation
+  templates/               # Optional: HTML/text templates
 ```
 
 ### Naming Conventions
 
-- **Skill directory**: `kebab-case` with product prefix (e.g., `pipes-new-indexer`, `portal-query`)
-- **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.sh` (e.g., `setup-database.sh`, `validate-abi.sh`)
+- **Skill directory and `name` field:** `kebab-case` (`pipes-sdk`, `portal`, `squid-perf`). They must match.
+- **SKILL.md:** always uppercase, always this exact filename.
+- **Scripts:** `kebab-case.sh` (e.g., `setup-database.sh`, `fetch-logs.sh`).
 
 ### SKILL.md Format
 
 ```markdown
 ---
 name: {skill-name}
-description: {One sentence describing what the skill does and when to use it}
+description: {One sentence describing what the skill does and when to use it. This is what the agent sees at startup — be specific about activation.}
 compatibility: {Optional: environment requirements}
-allowed-tools: [{Optional: space-delimited list of pre-approved tools}]
+allowed-tools: [{Optional: tool names}]
 metadata:
   author: subsquid
-  version: "1.1.0"
+  version: "1.2.0"
   category: {core|template|documentation|portal-core}
 ---
 
-# Pipes: {Skill Title}
+# {Skill Title}
 
 {Brief description of what the skill does.}
 
 ## When to Use This Skill
 
-{Describe activation scenarios}
+{Describe activation scenarios with concrete phrases the user might say.}
 
-## How It Works
+## {Workflow / Reference sections}
 
-{Numbered list explaining the skill's workflow}
+{Body content — keep under 500 lines; link heavily to references/}
 
-## Usage
+## Related
 
-{Show examples with code blocks}
-
-## Related Skills
-
-- [{skill-name}](../{skill-name}/SKILL.md) - {Description}
+- {Pointers to sibling skills}
 ```
 
 ### Best Practices for Context Efficiency
 
-Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage:
+Only the skill name and description load at agent startup. The full `SKILL.md` loads into context when the skill is activated.
 
-- **Keep SKILL.md under 500 lines** — put detailed reference material in `references/` directory
-- **Write specific descriptions** — helps the agent know exactly when to activate the skill
-- **Use progressive disclosure** — reference supporting files that get read only when needed
-- **Prefer references over inline content** — link to documentation files in `references/`
-- **File references work one level deep** — link directly from SKILL.md to supporting files
+- **Keep SKILL.md under 500 lines** — put detail in `references/`.
+- **Write specific descriptions** — the agent decides when to activate based on this line.
+- **Progressive disclosure** — link to reference files that get read only when needed.
+- **File references work one level deep** — link directly from SKILL.md to `references/*.md`.
 
 ### Script Requirements
 
@@ -89,49 +93,45 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 
 ### End-User Installation
 
-Document this installation method for users:
-
 ```bash
-npx skills add subsquid-labs/agent-skills
+# All skills
+npx skills add subsquid-labs/agent-skills --all
+
+# Individual
+npx skills add subsquid-labs/agent-skills/pipes-sdk
+npx skills add subsquid-labs/agent-skills/portal
+npx skills add subsquid-labs/agent-skills/squid-sdk/squid-perf
 ```
 
-Skills are automatically available once installed. The agent will use them when relevant tasks are detected.
+### Required MCP Servers (Optional)
 
-### Required MCP Servers
+Some skills benefit from MCP servers (configured in `.claude/settings.json` at the project level, not within individual skills):
 
-Some skills require MCP (Model Context Protocol) servers:
-
-- **ClickHouse MCP**: For `pipes-new-indexer` (local Docker deployment)
-- **ClickHouse Cloud MCP**: For `pipes-new-indexer` (ClickHouse Cloud deployment)
-- **Railway MCP**: For production deployment via Railway
-
-These are configured in `.claude/settings.json` at the project level, not within individual skills.
+- **ClickHouse MCP** — for `pipes-sdk` (local Docker deployment)
+- **ClickHouse Cloud MCP** — for `pipes-sdk` (ClickHouse Cloud deployment)
+- **Railway MCP** — for production deployment via Railway
 
 ## Skill Categories
 
-### Core Skills
-Agent skills for the full indexer development lifecycle: creation, debugging, deployment, validation.
-
-### Template Skills
-Production-ready templates for common blockchain patterns: DEX swaps, NFT transfers, liquid staking, lending protocols.
-
-### Documentation Skills
-Workflow guides and pattern documentation included as reference files within core skills.
+- **Core** — full indexer development lifecycle (creation, debugging, deployment, validation).
+- **Portal-core** — query and discovery skills for the SQD Portal.
+- **Template** — production-ready templates for common patterns (DEX swaps, NFT transfers, lending).
+- **Documentation** — workflow guides and pattern docs; typically live as reference files inside a core skill.
 
 ## Integration with Pipes SDK
 
-All skills work with the [Pipes SDK](https://github.com/subsquid-labs/pipes-sdk) and use `npx @iankressin/pipes-cli@latest` for project generation. Skills should:
+All Pipes-related skills use `npx @iankressin/pipes-cli@latest` for project generation. Skills should:
 
 - Use the published npm package (not local SDK paths)
 - Reference `beta.docs.sqd.dev` for documentation
-- Follow the research workflow in `pipes-new-indexer/references/RESEARCH_CHECKLIST.md`
+- Follow the research workflow in `pipes-sdk/references/RESEARCH_CHECKLIST.md`
 
 ## Validation
 
-Use the [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) reference library to validate your skills:
+Use the [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) library to validate a skill:
 
 ```bash
-skills-ref validate ./{product}/{skill-name}
+skills-ref validate ./{skill-name}
 ```
 
-This checks that your `SKILL.md` frontmatter is valid and follows all naming conventions.
+This checks that `SKILL.md` frontmatter is valid and follows naming conventions.
