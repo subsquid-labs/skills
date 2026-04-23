@@ -68,7 +68,7 @@ curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
 
 ### Anchor vs Non-Anchor Programs
 
-**Typegen only works for Anchor programs (d8).** Non-Anchor programs (SPL Token, SPL Stake Pool, System Program) use `d1` single-byte discriminators and require manual decoding. See `pipes-new-indexer` skill for the full non-Anchor workflow.
+**Typegen only works for Anchor programs (d8).** Non-Anchor programs (SPL Token, SPL Stake Pool, System Program) use `d1` single-byte discriminators and require manual decoding. See the `pipes-sdk` skill (specifically `references/TEMPLATES.md`) for the full non-Anchor workflow.
 
 | Program Type | Discriminator | Typegen? | Examples |
 |---|---|---|---|
