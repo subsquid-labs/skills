@@ -31,9 +31,12 @@ npx skills add subsquid-labs/agent-skills/pipes-sdk --all
 
 Production-grade blockchain indexing framework.
 
+**Install:**
 ```bash
 npx skills add subsquid-labs/agent-skills/squid-sdk --all
 ```
+
+[**See Squid SDK skills →**](./squid-sdk/README.md)
 
 ---
 
