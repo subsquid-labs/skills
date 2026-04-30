@@ -275,13 +275,10 @@ npx tsc
 
 ```bash
 # Test CLI availability
-npx @iankressin/pipes-cli@latest --version
-
-# Or with bun
-bunx @iankressin/pipes-cli@latest --version
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 --version
 ```
 
-**Note**: No local SDK installation needed - CLI is used via npx
+**Note**: No local SDK installation needed - CLI is used via pnpx
 
 ## Platform-Specific Notes
 
@@ -379,7 +376,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://v2.archive.subsq
 
 # Pipes CLI
 echo -n "Pipes CLI: "
-npx @iankressin/pipes-cli@latest --version > /dev/null 2>&1 && echo "✅ Available" || echo "❌ Failed"
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 --version > /dev/null 2>&1 && echo "✅ Available" || echo "❌ Failed"
 
 echo ""
 echo "=== Setup Complete ==="
@@ -515,7 +512,7 @@ docker run -d --name clickhouse -p 8123:8123 \
 # 4. Verify
 node --version
 docker ps
-npx @iankressin/pipes-cli@latest --version
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 --version
 
 # 5. Ready to build!
 ```

@@ -2,7 +2,7 @@
 
 The Pipes CLI ships with a catalog of templates; discover them with:
 ```bash
-npx @iankressin/pipes-cli@latest init --schema
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 init --schema
 ```
 
 Template IDs are **camelCase** (`uniswapV3Swaps`, not `uniswap-v3-swaps`). Each template has a required `params` schema — check `--schema` for the exact fields.

@@ -1,7 +1,7 @@
 ---
 name: pipes-sdk
-description: Build, configure, deploy, and troubleshoot blockchain indexers with the Subsquid Pipes SDK. Covers EVM, Solana, and Hyperliquid scaffolding via `@iankressin/pipes-cli`, runtime error diagnosis, sync performance tuning, and data quality validation.
-compatibility: Requires npm/npx for @iankressin/pipes-cli; Node.js LTS (v20 or v22) — avoid v25+.
+description: Build, configure, deploy, and troubleshoot blockchain indexers with the Subsquid Pipes SDK. Covers EVM, Solana, and Hyperliquid scaffolding via `@subsquid/pipes-cli`, runtime error diagnosis, sync performance tuning, and data quality validation.
+compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js LTS (v20 or v22) — avoid v25+.
 allowed-tools: [Bash, Read, Write, Edit, Grep]
 metadata:
   author: subsquid
@@ -28,7 +28,7 @@ Common trigger phrases: *"create a new indexer"*, *"my indexer crashed"*, *"erro
 
 **Node.js:** LTS only (v20 or v22). v25.x has zstd decompression bugs that crash during large Portal streams. See [ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md).
 
-**CLI:** `@iankressin/pipes-cli`. Always use programmatic mode via `--config '{...}'`. **Never create indexer files manually** — that bypasses scaffolding, dependency setup, and configuration.
+**CLI:** `@subsquid/pipes-cli@1.0.0-alpha.4`. Always use programmatic mode via `--config '{...}'`. **Never create indexer files manually** — that bypasses scaffolding, dependency setup, and configuration.
 
 ## Known CLI Quirks
 
@@ -51,7 +51,7 @@ See [TEMPLATES.md](references/TEMPLATES.md) for the full catalog: `erc20Transfer
 ### Step 1: Inspect templates (optional)
 
 ```bash
-npx @iankressin/pipes-cli@latest init --schema
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 init --schema
 ```
 
 Shows all template IDs (camelCase!), required params, and sink configs.
@@ -59,7 +59,7 @@ Shows all template IDs (camelCase!), required params, and sink configs.
 ### Step 2: Generate the project
 
 ```bash
-npx @iankressin/pipes-cli@latest init --config '{
+pnpx @subsquid/pipes-cli@1.0.0-alpha.4 init --config '{
   "projectFolder": "/path/to/my-indexer",
   "packageManager": "npm",
   "networkType": "evm",
