@@ -2,6 +2,7 @@
 name: portal
 description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
 allowed-tools: [Bash, WebFetch, WebSearch]
+compatibility: Targets Portal MCP server v0.7.8. Older versions exposed differently named tools — see "MCP Tools Quick Reference" below.
 metadata:
   author: subsquid
   version: "1.1.4"
@@ -67,7 +68,7 @@ curl -I https://portal.sqd.dev/datasets/{dataset-name}/metadata
 # 200 = exists, 404 = wrong name
 ```
 
-Or use MCP: `portal_list_datasets` with `query: "arbitrum"` to search.
+Or use MCP: `portal_list_networks` with `query: "arbitrum"` to search.
 
 ---
 
@@ -209,7 +210,7 @@ TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
 
 ### MCP equivalent
 
-`portal_block_at_timestamp` does the same in one call and works for real-time blocks too.
+`portal_debug_resolve_time_to_block` does the same in one call and works for real-time blocks too.
 
 ### Errors
 
@@ -222,58 +223,68 @@ TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
 
 ## MCP Tools Quick Reference
 
-If Portal MCP tools are available, prefer them over raw API calls:
+If Portal MCP tools are available, prefer them over raw API calls. Tool names below are for **Portal MCP server v0.7.8** — earlier versions used a flatter naming scheme without the chain-family prefix (e.g., `portal_query_logs` → `portal_evm_query_logs`).
 
 ### Discovery & Overview
 
 | Tool | Use Case |
 |------|----------|
-| `portal_list_datasets` | Search datasets by name, chain type, network type |
-| `portal_get_dataset_info` | Get dataset metadata: latest block, start block, tables |
-| `portal_get_block_number` | Get current/latest block for a dataset |
-| `portal_block_at_timestamp` | Find block number at a timestamp — works for real-time blocks too |
+| `portal_list_networks` | Search networks by name, chain type, network type |
+| `portal_get_network_info` | Get dataset metadata: latest block, start block, tables |
+| `portal_get_head` | Get current/latest block for a dataset |
+| `portal_get_recent_activity` | Recent activity on a dataset with auto block calculation |
+| `portal_debug_resolve_time_to_block` | Find block number at a timestamp — works for real-time blocks too |
+| `portal_debug_query_blocks` | Inspect raw block headers for diagnostics |
 
 ### EVM Queries
 
 | Tool | Use Case |
 |------|----------|
-| `portal_query_logs` | Query event logs with address/topic filters |
-| `portal_decode_logs` | Auto-decode known events (Transfer, Swap, etc.) |
-| `portal_count_events` | Count events by contract or type (~99% smaller) |
-| `portal_query_transactions` | Query transactions by sender/recipient/sighash |
-| `portal_get_recent_transactions` | Recent txs with auto block calculation |
-| `portal_query_traces` | Internal calls, contract deployments |
-| `portal_get_erc20_transfers` | ERC20 transfers with optional token info |
-| `portal_get_nft_transfers` | ERC721/ERC1155 transfers |
-| `portal_get_contract_activity` | Contract interaction stats |
-| `portal_get_wallet_summary` | Wallet txs + token transfers in one call |
-| `portal_get_top_contracts` | Most active contracts by tx count |
+| `portal_evm_query_logs` | Query event logs with address/topic filters |
+| `portal_evm_query_transactions` | Query transactions by sender/recipient/sighash |
+| `portal_evm_query_token_transfers` | ERC20/ERC721/ERC1155 transfers with optional token info |
+| `portal_evm_get_contract_activity` | Contract interaction stats |
+| `portal_evm_get_contract_deployment` | Look up deployment block/tx for a contract address |
+| `portal_evm_get_analytics` | Aggregate metrics: tx counts, gas, transfer volumes, top contracts |
+| `portal_evm_get_ohlc` | OHLC candles from on-chain DEX swap data |
 
 ### Solana Queries
 
 | Tool | Use Case |
 |------|----------|
-| `portal_query_solana_instructions` | Instructions with program/discriminator/account filters |
-| `portal_query_solana_transactions` | Transactions by fee payer or account |
-| `portal_query_solana_token_balances` | SPL token balance changes |
-| `portal_query_solana_balances` | SOL balance changes |
-| `portal_query_solana_logs` | Program log messages |
+| `portal_solana_query_instructions` | Instructions with program/discriminator/account filters |
+| `portal_solana_query_transactions` | Transactions by fee payer or account |
+| `portal_solana_get_analytics` | Aggregate Solana metrics |
+
+### Substrate Queries
+
+| Tool | Use Case |
+|------|----------|
+| `portal_substrate_query_events` | Pallet events with section/method filters |
+| `portal_substrate_query_calls` | Extrinsic calls with section/method filters |
+| `portal_substrate_get_analytics` | Aggregate Substrate metrics |
 
 ### Hyperliquid Queries
 
 | Tool | Use Case |
 |------|----------|
-| `portal_query_hyperliquid_fills` | Trade fills by coin, user, direction |
+| `portal_hyperliquid_query_fills` | Trade fills by coin, user, direction |
+| `portal_hyperliquid_get_analytics` | Aggregate fill metrics (volume, count, by coin) |
+| `portal_hyperliquid_get_ohlc` | OHLC candles from Hyperliquid fills |
 
-### Analytics
+### Bitcoin Queries
 
 | Tool | Use Case |
 |------|----------|
-| `portal_aggregate_transfers` | ERC20 transfer volume stats (~98% smaller) |
+| `portal_bitcoin_query_transactions` | Bitcoin transactions with input/output filters |
+| `portal_bitcoin_get_analytics` | Aggregate Bitcoin metrics |
+
+### Cross-Chain Analytics
+
+| Tool | Use Case |
+|------|----------|
+| `portal_get_wallet_summary` | Wallet txs + token transfers in one call |
 | `portal_get_time_series` | Bucketed metrics over time (tx count, gas, etc.) |
-| `portal_get_gas_analytics` | Gas price analysis with cost estimates |
-| `portal_get_transaction_density` | Tx count per block |
-| `portal_get_token_info` | Token metadata from CoinGecko |
 
 ---
 
@@ -298,7 +309,7 @@ All Portal responses use **JSON Lines** (NDJSON) — one JSON object per line:
 POST /datasets/ethereum/stream  ❌
 POST /datasets/ethereum-mainnet/stream  ✅
 ```
-Always verify with the mapping table or `portal_list_datasets`.
+Always verify with the mapping table or `portal_list_networks`.
 
 ### Missing `type` Field
 ```json

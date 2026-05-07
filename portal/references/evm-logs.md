@@ -438,7 +438,7 @@ ethers.id("Transfer(address, address, uint256)")  // WRONG - spaces cause wrong 
 
 **Verification workflow:**
 
-1. **Query actual topic0s from the contract** using Portal MCP's `portal_get_contract_activity` or `portal_count_events` grouped by topic0
+1. **Query actual topic0s from the contract** using Portal MCP's `portal_evm_get_contract_activity` or `portal_evm_get_analytics` grouped by topic0
 2. **Identify unknowns** — look up topic0 hashes on [4byte.directory](https://www.4byte.directory/) or [openchain.xyz](https://openchain.xyz/signatures)
 3. **Cross-reference with source code** — verify parameter types and indexed fields match
 
