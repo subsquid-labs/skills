@@ -5,7 +5,7 @@ compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js LTS (v20 or v
 allowed-tools: [Bash, Read, Write, Edit, Grep]
 metadata:
   author: subsquid
-  version: "1.2.0"
+  version: "1.1.4"
   category: core
 ---
 

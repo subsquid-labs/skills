@@ -4,7 +4,7 @@ description: Query blockchain data across 210+ chains using SQD Portal. Covers E
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
-  version: "1.2.0"
+  version: "1.1.4"
   category: portal-core
 ---
 
@@ -187,6 +187,39 @@ Dataset: `hyperliquid-fills`
 
 ---
 
+## Working with Time Ranges (Timestamp → Block)
+
+To query a time range like "last 4 hours" or "since yesterday" without guessing blocks, resolve a Unix timestamp (in seconds) to the first block at or after that time:
+
+```
+GET https://portal.sqd.dev/datasets/{dataset}/timestamps/{unix-seconds}/block
+→ {"block_number": 25043068}
+```
+
+**Works for both archived AND real-time data** — resolve timestamps from minutes ago, not just historical ranges. Available on every dataset (EVM, Solana, Substrate, Bitcoin, Hyperliquid).
+
+### Example: "USDC transfers on Base in the last 4 hours"
+
+```bash
+NOW=$(date +%s)
+FROM=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/timestamps/$((NOW - 4*3600))/block | jq -r .block_number)
+TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
+# Use $FROM and $TO as fromBlock / toBlock in your stream query
+```
+
+### MCP equivalent
+
+`portal_block_at_timestamp` does the same in one call and works for real-time blocks too.
+
+### Errors
+
+- `404 {"message":"block not in hotblocks"}` — timestamp is in the future, or beyond the dataset head
+- `404 Unknown dataset` — wrong dataset name (see Step 1)
+
+> **Don't estimate blocks from `(now - ts) / block_time`** — block times vary and the result drifts by hundreds of blocks. Use this endpoint instead.
+
+---
+
 ## MCP Tools Quick Reference
 
 If Portal MCP tools are available, prefer them over raw API calls:
@@ -198,7 +231,7 @@ If Portal MCP tools are available, prefer them over raw API calls:
 | `portal_list_datasets` | Search datasets by name, chain type, network type |
 | `portal_get_dataset_info` | Get dataset metadata: latest block, start block, tables |
 | `portal_get_block_number` | Get current/latest block for a dataset |
-| `portal_block_at_timestamp` | Find block number at a specific timestamp |
+| `portal_block_at_timestamp` | Find block number at a timestamp — works for real-time blocks too |
 
 ### EVM Queries
 
