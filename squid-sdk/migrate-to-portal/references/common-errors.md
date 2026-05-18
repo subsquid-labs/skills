@@ -193,10 +193,10 @@ If a function was typed `(b: Block) => ...` and now reaches into `b.transactions
 
 (Or on `Block<Fields>`.)
 
-**Cause:** the old `evm-processor` exposed `block.height` as a shortcut; the new `BlockHeader` only has `block.header.number`.
+**Cause:** the old `evm-processor` exposed `block.height` as a *shortcut* directly on the block; the new `Block`/`BlockHeader` types from `@subsquid/evm-objects` no longer surface that shortcut. The underlying field is still there on the header as `block.header.height` (typed as `@deprecated` — prefer `block.header.number`, which is the same value).
 
 **Fix:**
-- `block.height` → `block.header.number`
+- `block.height` → `block.header.number` (or `block.header.height` for a literal rename, though `.height` is deprecated on the new header)
 - `block.timestamp` (shortcut) → `block.header.timestamp`
 - `log.block.height` → `log.block.number` (after `augmentBlock`)
 
@@ -383,7 +383,7 @@ let exchange = new Exchange({
 
 (Or `postMint`, `preDecimals`, `postDecimals`.)
 
-**Cause:** `preMint`, `postMint`, `preDecimals`, `postDecimals` were part of the v2 `tokenBalance` default field set, but are not in the Portal default set. The Portal default is `{ preAmount, postAmount, preOwner, postOwner }` only.
+**Cause:** these fields were part of the **v2** `tokenBalance` default field set, but Portal `solana-stream@^1.x.x` ships **no** default field set (only required identity fields like `transactionIndex` / `account` are always present on a `TokenBalance`; everything else must be requested). A v2 handler that read `tokenBalance.preMint` without listing it broke at compile time after migration.
 
 **Fix:** add the fields to `.setFields({ tokenBalance: {...} })`:
 ```ts
@@ -404,9 +404,9 @@ let exchange = new Exchange({
 
 (Or `accountKeys`, `timestamp` on the header, `preAmount` on a token balance, etc.)
 
-**Cause:** the new `solana-stream` fetches only fields listed in `.setFields()`. The v2 default set is small and does not cover everything a handler typically reads.
+**Cause:** Portal `solana-stream@^1.x.x` ships **no** default fields. Only the required identity/index fields are always present (`block.{number,hash,parentHash}`, `transaction.transactionIndex`, etc.); everything else must be requested via `.setFields()`. v2 merged a default set on top of your selection, so squids that relied on it now fail to compile.
 
-v2 `DEFAULT_FIELDS` for reference:
+v2 `DEFAULT_FIELDS` (what was previously free, and now is not):
 ```
 block:        { slot, parentSlot, timestamp }
 transaction:  { signatures, err }

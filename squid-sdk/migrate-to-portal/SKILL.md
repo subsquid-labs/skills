@@ -211,17 +211,19 @@ Code that expected header-only via `Block` will now type-check against the full 
 
 ```ts
 // after, no RPC
-export type Context = BaseDataHandlerContext<BlockData, Store> & {
+export type Context<Store> = BaseDataHandlerContext<BlockData, Store> & {
   log: Logger
 }
 
 // after, with RPC
 import type {RpcClient} from '@subsquid/rpc-client'
-export type Context = BaseDataHandlerContext<BlockData, Store> & {
+export type Context<Store> = BaseDataHandlerContext<BlockData, Store> & {
   log: Logger
   _chain: { client: RpcClient }
 }
 ```
+
+`Store` is the user's store generic — typically `Store` re-exported from `@subsquid/typeorm-store` (`import {Store, TypeormDatabase} from '@subsquid/typeorm-store'`). At the call site you'd write `Context<Store>`.
 
 ### Step 4 — Rewrite the data source
 
@@ -274,7 +276,7 @@ const dataSource = new DataSourceBuilder()
 
 Structural changes:
 
-1. **`setRpcEndpoint` / `setFinalityConfirmation` / `setDataSource` are gone.** Portal handles real-time delivery and finality. All three v2 shapes (`setGateway`/`setDataSource`) collapse to a single `.setPortal({...})` call.
+1. **`setRpcEndpoint` / `setFinalityConfirmation` / `setDataSource` are gone.** Portal handles real-time delivery and finality. All three v2 shapes (`setGateway`/`setDataSource`) collapse to a single `.setPortal(...)` call. Both forms are valid: bare URL (`.setPortal('https://portal.sqd.dev/datasets/<slug>')`, matching the upstream EVM doc) or object form (`.setPortal({ url, http: { retryAttempts: Infinity } })`). The object form is recommended for production because it lets you raise `http.retryAttempts` so the indexer doesn't exit on transient non-2xx Portal responses.
 2. **`.addLog()` / `.addTransaction()` / `.addTrace()` / `.addStateDiff()` arguments are split into three keys.** Filters under `where`, related items under `include`, block range under `range`. The flat shape (`{ address, topic0, transaction: true, range }`) is rejected by the new type.
 3. **`.setFields({ evmLog: ... })` → `.setFields({ log: ... })`.** The selector key for log fields was renamed.
 4. **`.build()` must be called** at the end of the chain. Without it, calls like `getBlockStream` are not on the builder type.
@@ -291,7 +293,7 @@ import {createLogger} from '@subsquid/logger'
 const logger = createLogger('sqd:processor:mapping')
 
 run(dataSource, db, async (simpleCtx) => {
-  const ctx: Context = {
+  const ctx: Context<Store> = {
     ...simpleCtx,
     blocks: simpleCtx.blocks.map(augmentBlock),
     log: logger,
@@ -306,10 +308,10 @@ The old `processor.run(db, handler)` becomes a free `run(dataSource, db, handler
 1. `augmentBlock()` each block. Raw blocks from the stream are flat objects; `augmentBlock` adds the convenience back-references (`log.transaction`, `log.block`, `block.logs[*].id`, etc.).
 2. Attach the logger manually. The new base context doesn't carry `log`.
 
-Block-shortcut renames:
+Block-shortcut renames (the old top-level `block.X` shortcuts are gone; the values now live under `block.header`):
 
-- `block.height` → `block.header.number`
-- `block.timestamp` (shortcut) → `block.header.timestamp`
+- `block.height` → `block.header.number` (`.height` is also present on the new `BlockHeader` but marked `@deprecated`; prefer `.number`)
+- `block.timestamp` → `block.header.timestamp`
 - `log.block.height` → `log.block.number` (after `augmentBlock`)
 
 ### Step 6 — (Optional) RPC client for direct chain reads
@@ -325,7 +327,7 @@ const rpcClient = new RpcClient({
 })
 
 run(dataSource, db, async (simpleCtx) => {
-  const ctx: Context = {
+  const ctx: Context<Store> = {
     ...simpleCtx,
     blocks: simpleCtx.blocks.map(augmentBlock),
     log: logger,
@@ -464,7 +466,9 @@ Required for the store to apply Portal's hot-block updates once the indexer reac
 
 ### Step 5 — Field selection
 
-The Portal `solana-stream` fetches only the fields listed in `.setFields()`. The v2 default set is:
+The Portal `solana-stream` (`^1.x.x`) fetches **only** the fields listed in `.setFields()`. There is no default set — beyond a small set of always-required identity/index fields (`block.number`/`.hash`/`.parentHash`, `transaction.transactionIndex`, `instruction.transactionIndex`/`.instructionAddress`, etc.), every field must be requested explicitly. TypeScript enforces this: accessing a field not in your selection is a compile error.
+
+v2 was different — it merged this default set on top of your selection, so a partial `.setFields()` still worked at runtime:
 
 ```
 block:        { slot, parentSlot, timestamp }
@@ -477,7 +481,7 @@ tokenBalance: { preMint, preDecimals, preOwner, preAmount,
 reward:       { lamports, rewardType }
 ```
 
-The Portal default set is narrower — most notably `tokenBalance` now defaults to `{ preAmount, postAmount, preOwner, postOwner }` only. Fields used in the handler that are not in the Portal defaults must be requested explicitly.
+After the migration these are no longer free; anything from this list that your handler reads must be listed in `.setFields()`. The most-missed cases on a real squid are `tokenBalance.preMint` / `postMint` (commonly used to recover which token is involved in a swap) and `transaction.signatures` / `block.header.timestamp`.
 
 Typical minimum for a swap-style instruction handler:
 
@@ -486,7 +490,7 @@ Typical minimum for a swap-style instruction handler:
   block: { timestamp: true },
   transaction: {
     signatures: true,
-    accountKeys: true,   // not in defaults; needed if you read tx.accountKeys
+    accountKeys: true,
   },
   instruction: {
     programId: true,
@@ -498,13 +502,13 @@ Typical minimum for a swap-style instruction handler:
     postAmount: true,
     preOwner: true,
     postOwner: true,
-    preMint: true,       // v2 default, NOT in Portal default
-    postMint: true,      // v2 default, NOT in Portal default
+    preMint: true,
+    postMint: true,
   },
 })
 ```
 
-`block.header.number` (the slot) is always available without being requested. Block **height** is not — request via `block: { height: true }` only if your handler reads it.
+`block.header.number` (the slot on Solana) is always available without being requested. Block **height** is not — request via `block: { height: true }` if your handler reads it.
 
 ---
 

@@ -16,7 +16,7 @@ Migrates an existing Squid SDK indexer — EVM or Solana — off the v2 gateway 
 
 - Both chains: v2-with-`apiKey` step (mandatory for self-hosted squids from **2026-05-19 12:00 UTC**, per [the upstream changelog](https://docs.sqd.dev/changelog/gateway-api-keys)) — `@subsquid/evm-processor@^1.30.0` on EVM, `@subsquid/solana-stream@^0.5.0` on Solana. Both auto-read `SQD_API_KEY` from the environment. Get a key at <https://portal.sqd.dev/app>.
 - EVM: the `evmLog` → `log` field-selection rename; `decodeHex` and `assertNotNull` import moves to `@subsquid/util-internal-hex` / `@subsquid/util-internal`; removal of `@subsquid/archive-registry` for older `lookupArchive` squids; unwinding the `EvmBatchProcessorFields<typeof processor>` typegen pattern; the `Block` ↔ `BlockData` swap; the flipped `DataHandlerContext` generic order; `block.height` → `block.header.number`.
-- Solana: ordering `SolanaRpcClient` removal *before* the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; the narrower Portal default field set (notably `tokenBalance.preMint` / `postMint` are no longer defaults).
+- Solana: ordering `SolanaRpcClient` removal *before* the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; Portal `solana-stream@^1.x.x` no longer ships a default field set, so every field your handler reads must be in `.setFields()` (notably `tokenBalance.preMint` / `postMint`, `transaction.signatures`, `block.header.timestamp`).
 
 **Install just this skill:**
 ```bash

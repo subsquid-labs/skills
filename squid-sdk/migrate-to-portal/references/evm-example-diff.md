@@ -161,9 +161,12 @@ If the handler does direct RPC calls, also add:
 +    _chain: { client: rpcClient },
    }
 
-   // contract reads via new abi.Contract(ctx, header, address) work unchanged
-   const usdcContract = new usdcAbi.Contract(ctx, blocks[0].header, USDC_CONTRACT_ADDRESS)
-   const decimals = await usdcContract.decimals()
+   // contract reads via new abi.Contract(ctx, header, address) work unchanged.
+   // Use ctx.blocks[0].header (with an empty-batch guard) for the header:
+   if (ctx.blocks.length > 0) {
+     const usdcContract = new usdcAbi.Contract(ctx, ctx.blocks[0].header, USDC_CONTRACT_ADDRESS)
+     const decimals = await usdcContract.decimals()
+   }
  })
 ```
 
