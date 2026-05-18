@@ -10,6 +10,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 |-------|----------|
 | [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot blockchain indexers with the Pipes SDK (EVM, Solana, Hyperliquid) |
 | [**portal**](./portal/) | Query blockchain data across 210+ chains via the SQD Portal Stream API |
+| [**migrate-to-portal**](./squid-sdk/migrate-to-portal/) | Migrate an existing Squid SDK indexer (EVM or Solana) off the v2 gateway onto Portal |
 | [**squid-perf**](./squid-sdk/squid-perf/) | Compare indexer sync-time performance across runs |
 
 ## Installation
@@ -23,6 +24,7 @@ npx skills add subsquid-labs/agent-skills --all
 ```bash
 npx skills add subsquid-labs/agent-skills/pipes-sdk
 npx skills add subsquid-labs/agent-skills/portal
+npx skills add subsquid-labs/agent-skills/squid-sdk/migrate-to-portal
 npx skills add subsquid-labs/agent-skills/squid-sdk/squid-perf
 ```
 
@@ -35,6 +37,12 @@ Create a new indexer for USDC transfers on Ethereum
 ```
 ```
 My indexer crashed with "Cannot read properties of undefined (reading 'topic')"
+```
+```
+Migrate my squid from @subsquid/evm-processor to Portal
+```
+```
+Move my Solana squid off setGateway and onto Portal
 ```
 ```
 Query all USDC transfers on Base between blocks 10M–11M
