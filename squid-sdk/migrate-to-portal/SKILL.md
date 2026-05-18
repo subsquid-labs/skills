@@ -47,9 +47,17 @@ Activate when the user says any of:
 
 ---
 
-## (Optional) Add the v2 gateway API key — EVM or Solana
+## (Required from 2026-05-19 12:00 UTC) Add the v2 gateway API key — EVM or Solana
 
-Skip if going straight to Portal. Read this if the squid is still on the v2 gateway and needs API-key auth (e.g. while staging the Portal migration on a branch).
+Per the upstream changelog (<https://docs.sqd.dev/changelog/gateway-api-keys>), authenticated calls to the v2 gateway are **mandatory from May 19, 2026 at 12:00 UTC** for self-hosted setups. Skip this section only if:
+
+- your squid runs on **SQD Cloud** (Cloud injects the key for you), or
+- your squid is already on **Portal** (no `setGateway` call), or
+- your squid uses **RPC only** (no `setGateway` call).
+
+Otherwise, the v2 archive will reject anonymous requests once the cutover lands; add the API key now even if the Portal migration is on a branch.
+
+**Get a key:** register at <https://portal.sqd.dev/app> and create a gateway API key.
 
 The `apiKey` field on the gateway settings is supported by:
 
@@ -86,7 +94,11 @@ echo '.env' >> .gitignore
 
 Both `GatewaySettings.apiKey` definitions document "Defaults to `SQD_API_KEY`" — the field is auto-read from the environment if omitted on the call. Passing it explicitly is clearer.
 
-> Going to `latest` instead skips over the v2-with-`apiKey` configuration: on EVM, `latest` is `@subsquid/evm-stream`/`@subsquid/evm-objects` (Portal stack) where `setGateway` is gone; on Solana, `latest` is `@subsquid/solana-stream@^1.x.x` (Portal-only) where `setGateway` is also gone. Pin the v2 version above only if you need the intermediate v2-with-auth stage.
+> Going to `latest` instead skips over the v2-with-`apiKey` configuration: on EVM, `latest` is `@subsquid/evm-stream`/`@subsquid/evm-objects` (Portal stack) where `setGateway` is gone; on Solana, `latest` is `@subsquid/solana-stream@^1.x.x` (Portal-only) where `setGateway` is also gone. Pin the v2 version above only if you need the intermediate v2-with-auth stage; otherwise the Portal migration below makes API keys moot.
+
+Reference docs:
+- Changelog: <https://docs.sqd.dev/changelog/gateway-api-keys>
+- API-key setup guide: <https://docs.sqd.dev/en/data/api-keys>
 
 ---
 

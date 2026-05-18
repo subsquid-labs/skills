@@ -119,9 +119,9 @@ The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev
 | 289_819_150  | 317_617_480   |
 | 303_262_650  | 325_000_000   |
 
-## Optional: API key on v2 gateway (pre-Portal)
+## Required from 2026-05-19 12:00 UTC: API key on v2 gateway
 
-If staging on a branch and keeping the v2 squid working with API-key auth before the Portal migration:
+Self-hosted squids that still hit the v2 archive must authenticate from May 19, 2026 12:00 UTC. Cloud-hosted squids are unaffected. Get a key at <https://portal.sqd.dev/app>.
 
 ```bash
 npm i @subsquid/solana-stream@^0.5.0
@@ -142,6 +142,8 @@ echo '.env' >> .gitignore
 ```
 
 `apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/solana-stream@0.5.0`; earlier 0.x versions reject the field.
+
+Reference docs: <https://docs.sqd.dev/changelog/gateway-api-keys> · <https://docs.sqd.dev/en/data/api-keys>
 
 ## Reference template
 
