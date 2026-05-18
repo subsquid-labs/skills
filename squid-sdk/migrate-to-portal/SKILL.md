@@ -228,32 +228,7 @@ export type Context<Store> = BaseDataHandlerContext<BlockData, Store> & {
 ### Step 4 — Rewrite the data source
 
 ```ts
-// before (recent v2 squid)
-const processor = new EvmBatchProcessor()
-  .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
-  .setRpcEndpoint('https://rpc.example')
-  .setFinalityConfirmation(75)
-  .addLog({
-    address: [CONTRACT],
-    topic0: [TOPIC],
-    transaction: true,
-    range: { from: 6_082_465 },
-  })
-  .setFields({
-    evmLog: { topics: true, data: true },         // legacy key
-    transaction: { hash: true },
-  })
-
-// before (older v2 squid with lookupArchive)
-const processor = new EvmBatchProcessor()
-  .setDataSource({
-    archive: lookupArchive('eth-mainnet'),
-    chain: 'https://rpc.example',
-  })
-  .setFinalityConfirmation(75)
-  // ...
-
-// after (same for both starting shapes)
+// after
 const dataSource = new DataSourceBuilder()
   .setPortal({
     url: 'https://portal.sqd.dev/datasets/ethereum-mainnet',
@@ -262,17 +237,14 @@ const dataSource = new DataSourceBuilder()
   .setBlockRange({ from: 6_082_465 })
   .setFields(fields)
   .addLog({
-    where: {
-      address: [CONTRACT],
-      topic0: [TOPIC],
-    },
-    include: {
-      transaction: true,
-    },
+    where: { address: [CONTRACT], topic0: [TOPIC] },
+    include: { transaction: true },
     range: { from: 6_082_465 },
   })
   .build()
 ```
+
+Full before/after for both starting shapes (recent `setGateway`/`setRpcEndpoint`/`setFinalityConfirmation` and the older `lookupArchive` + `setDataSource({archive, chain})`) is in `references/evm-example-diff.md`.
 
 Structural changes:
 
@@ -468,20 +440,7 @@ Required for the store to apply Portal's hot-block updates once the indexer reac
 
 The Portal `solana-stream` (`^1.x.x`) fetches **only** the fields listed in `.setFields()`. There is no default set — beyond a small set of always-required identity/index fields (`block.number`/`.hash`/`.parentHash`, `transaction.transactionIndex`, `instruction.transactionIndex`/`.instructionAddress`, etc.), every field must be requested explicitly. TypeScript enforces this: accessing a field not in your selection is a compile error.
 
-v2 was different — it merged this default set on top of your selection, so a partial `.setFields()` still worked at runtime:
-
-```
-block:        { slot, parentSlot, timestamp }
-transaction:  { signatures, err }
-instruction:  { programId, accounts, data, isCommitted }
-log:          { programId, kind, message }
-balance:      { pre, post }
-tokenBalance: { preMint, preDecimals, preOwner, preAmount,
-                postMint, postDecimals, postOwner, postAmount }
-reward:       { lamports, rewardType }
-```
-
-After the migration these are no longer free; anything from this list that your handler reads must be listed in `.setFields()`. The most-missed cases on a real squid are `tokenBalance.preMint` / `postMint` (commonly used to recover which token is involved in a swap) and `transaction.signatures` / `block.header.timestamp`.
+v2 was different — it merged a default set on top of your selection, so a partial `.setFields()` still worked at runtime. The full v2 default table is in `references/common-errors.md` ("Property 'signatures' does not exist..."). The most-missed cases on a real squid: `tokenBalance.preMint` / `postMint` (commonly used to recover which token is involved in a swap), `transaction.signatures`, `block.header.timestamp`.
 
 Typical minimum for a swap-style instruction handler:
 
@@ -512,21 +471,11 @@ Typical minimum for a swap-style instruction handler:
 
 ---
 
-## Common errors (quick index)
-
-Full table with fixes in `references/common-errors.md`.
-
-**Either chain (v2-with-apiKey staging)** — `TS2353: 'apiKey' does not exist in type 'GatewaySettings'` (need `@subsquid/evm-processor@^1.30.0` on EVM or `@subsquid/solana-stream@^0.5.0` on Solana).
-
-**EVM** — `TS2353 ... 'address' does not exist` on `.addLog` (filters → `where:`, related-items → `include:`) · `'evmLog' does not exist in type 'FieldSelection'` (rename to `log:`) · `'getBlockStream' does not exist on type 'DataSourceBuilder'` (missing `.build()`) · `Property 'address'/'topics'/'data'/'timestamp'/'from' does not exist on type 'Log'` (field not in `.setFields()`) · `Property 'height' does not exist on type 'BlockHeader'` (use `block.header.number`) · `Module '@subsquid/evm-processor' has no exported member 'decodeHex'`/`'assertNotNull'` (retarget to `@subsquid/util-internal-hex` / `@subsquid/util-internal`).
-
-**Solana** — `Module '"@subsquid/solana-stream"' has no exported member 'SolanaRpcClient'` (drop import + `.setRpc`) · `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0` (fixed in `solana-stream@^1.1.1`) · `HttpError: Got 404 ... solana-mainnet dataset starts from <height> block` (bump `from:` above the value in the 404 body, or finish the Portal migration) · `Property 'slot' does not exist on type 'BlockHeader'` (use `block.header.number`) · `Property 'preMint'/'postMint' does not exist on type 'TokenBalance<F>'` (add to `.setFields({ tokenBalance: {...} })`) · `Property 'signatures'/'accountKeys' does not exist on type 'Transaction'` (field not in `.setFields()`) · indexer exits on transient HTTP errors (`http: { retryAttempts: Infinity }`).
-
 ## References
 
 - `references/evm-example-diff.md` — canonical USDC-transfers diff
 - `references/solana-example-diff.md` — canonical Whirlpool-swap diff
-- `references/common-errors.md` — extended errors with full fixes
+- `references/common-errors.md` — full table of TS / install / runtime errors with one-line fixes, grouped by chain (and "both chains" for v2-with-`apiKey`)
 
 ## Related skills
 

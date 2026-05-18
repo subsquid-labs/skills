@@ -119,6 +119,29 @@ Two non-obvious renames:
 - `Block` was header-only; it is now the full payload. The old `BlockData` shape is the new `Block`. The old `Block` shape is the new `BlockHeader`.
 - `ProcessorContext` is conventionally renamed to `Context` or `DataHandlerContext` since there is no `Processor` object anymore.
 
+## Older v2 squids — `setDataSource({ archive, chain })` shape
+
+Squids written before `setGateway` existed used the older shape. The migration is identical — replace the whole block with the same `.setPortal({...})` call from the main diff. Uninstall `@subsquid/archive-registry` along with `@subsquid/evm-processor`.
+
+```diff
+-import { lookupArchive } from '@subsquid/archive-registry'
+-
+-const processor = new EvmBatchProcessor()
+-  .setDataSource({
+-    archive: lookupArchive('eth-mainnet'),
+-    chain: 'https://rpc.example',
+-  })
+-  .setFinalityConfirmation(75)
++const dataSource = new DataSourceBuilder()
++  .setPortal({
++    url: 'https://portal.sqd.dev/datasets/ethereum-mainnet',
++    http: { retryAttempts: Infinity },
++  })
+   // ... rest matches the main diff above
+```
+
+The archive-slug → Portal-slug mapping is direct for most chains (`eth-mainnet` → `ethereum-mainnet`, `bsc-mainnet` → `binance-mainnet`). Verify with `curl -sI https://portal.sqd.dev/datasets/<slug>/metadata`.
+
 ## `package.json`
 
 ```diff
