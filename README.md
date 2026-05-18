@@ -17,15 +17,15 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 **Install all skills:**
 ```bash
-npx skills add subsquid-labs/agent-skills --all
+npx skills add subsquid-labs/skills --all
 ```
 
 **Install individually:**
 ```bash
-npx skills add subsquid-labs/agent-skills/pipes-sdk
-npx skills add subsquid-labs/agent-skills/portal
-npx skills add subsquid-labs/agent-skills/squid-sdk/migrate-to-portal
-npx skills add subsquid-labs/agent-skills/squid-sdk/squid-perf
+npx skills add subsquid-labs/skills/pipes-sdk
+npx skills add subsquid-labs/skills/portal
+npx skills add subsquid-labs/skills/squid-sdk/migrate-to-portal
+npx skills add subsquid-labs/skills/squid-sdk/squid-perf
 ```
 
 Skills activate automatically once installed — the agent picks the right one based on your task.

@@ -5,7 +5,7 @@ Skills for AI coding agents working with the [Squid SDK](https://docs.sqd.dev) -
 ## Installation
 
 ```bash
-npx skills add subsquid-labs/agent-skills/squid-sdk --all
+npx skills add subsquid-labs/skills/squid-sdk --all
 ```
 
 ## Skills
@@ -20,7 +20,7 @@ Migrates an existing Squid SDK indexer — EVM or Solana — off the v2 gateway 
 
 **Install just this skill:**
 ```bash
-npx skills add subsquid-labs/agent-skills/squid-sdk/migrate-to-portal
+npx skills add subsquid-labs/skills/squid-sdk/migrate-to-portal
 ```
 
 [**See skill details →**](./migrate-to-portal/SKILL.md)
@@ -40,7 +40,7 @@ Compare sync-time performance across one or more Squid SDK deployments. Fetches 
 
 **Install just this skill:**
 ```bash
-npx skills add subsquid-labs/agent-skills/squid-sdk/squid-perf
+npx skills add subsquid-labs/skills/squid-sdk/squid-perf
 ```
 
 [**See skill details →**](./squid-perf/SKILL.md)

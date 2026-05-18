@@ -95,12 +95,12 @@ Only the skill name and description load at agent startup. The full `SKILL.md` l
 
 ```bash
 # All skills
-npx skills add subsquid-labs/agent-skills --all
+npx skills add subsquid-labs/skills --all
 
 # Individual
-npx skills add subsquid-labs/agent-skills/pipes-sdk
-npx skills add subsquid-labs/agent-skills/portal
-npx skills add subsquid-labs/agent-skills/squid-sdk/squid-perf
+npx skills add subsquid-labs/skills/pipes-sdk
+npx skills add subsquid-labs/skills/portal
+npx skills add subsquid-labs/skills/squid-sdk/squid-perf
 ```
 
 ### Required MCP Servers (Optional)
