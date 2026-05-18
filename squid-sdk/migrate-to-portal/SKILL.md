@@ -47,6 +47,49 @@ Activate when the user says any of:
 
 ---
 
+## (Optional) Add the v2 gateway API key — EVM or Solana
+
+Skip if going straight to Portal. Read this if the squid is still on the v2 gateway and needs API-key auth (e.g. while staging the Portal migration on a branch).
+
+The `apiKey` field on the gateway settings is supported by:
+
+| Chain | Package | First version with `apiKey` |
+|---|---|---|
+| EVM | `@subsquid/evm-processor` | `1.30.0` (still v2; `setGateway`-shaped) |
+| Solana | `@subsquid/solana-stream` | `0.5.0` (highest 0.x; still `setGateway`-shaped) |
+
+If your squid is on an older release, bump to at least the version above before adding `apiKey`. Older versions reject the field with `TS2353: 'apiKey' does not exist in type 'GatewaySettings'`.
+
+```bash
+# EVM
+npm i @subsquid/evm-processor@^1.30.0
+
+# Solana
+npm i @subsquid/solana-stream@^0.5.0
+```
+
+Then convert the call:
+
+```diff
+- .setGateway('https://v2.archive.subsquid.io/network/<slug>')
++ .setGateway({
++   url: 'https://v2.archive.subsquid.io/network/<slug>',
++   apiKey: process.env.SQD_API_KEY,
++ })
+```
+
+```bash
+echo 'SQD_API_KEY=...' >> .env
+echo 'SQD_API_KEY=your_api_key_here' >> .env.example
+echo '.env' >> .gitignore
+```
+
+Both `GatewaySettings.apiKey` definitions document "Defaults to `SQD_API_KEY`" — the field is auto-read from the environment if omitted on the call. Passing it explicitly is clearer.
+
+> Going to `latest` instead skips over the v2-with-`apiKey` configuration: on EVM, `latest` is `@subsquid/evm-stream`/`@subsquid/evm-objects` (Portal stack) where `setGateway` is gone; on Solana, `latest` is `@subsquid/solana-stream@^1.x.x` (Portal-only) where `setGateway` is also gone. Pin the v2 version above only if you need the intermediate v2-with-auth stage.
+
+---
+
 ## EVM migration
 
 ### Step 1 — Swap packages
@@ -318,35 +361,7 @@ If the handler reaches into a field not listed, TS rejects the access.
 
 ## Solana migration
 
-### (Optional) Add the v2 gateway API key
-
-Skip if going straight to Portal. Read this if the squid is still on the v2 gateway and needs API-key auth (e.g. while staging the Portal migration on a branch).
-
-The `apiKey` field on `setGateway({...})` exists in `@subsquid/solana-stream@^0.5.0` and later 0.x. Older 0.x squids (the type for `GatewaySettings` is `{ url, requestTimeout? }`) need a bump first:
-
-```bash
-npm i @subsquid/solana-stream@^0.5.0
-```
-
-Then convert the call and add the key to `.env`:
-
-```diff
-- .setGateway('https://v2.archive.subsquid.io/network/solana-mainnet')
-+ .setGateway({
-+   url: 'https://v2.archive.subsquid.io/network/solana-mainnet',
-+   apiKey: process.env.SQD_API_KEY,
-+ })
-```
-
-```bash
-echo 'SQD_API_KEY=...' >> .env
-echo 'SQD_API_KEY=your_api_key_here' >> .env.example
-echo '.env' >> .gitignore
-```
-
-`apiKey` defaults to `SQD_API_KEY` from the environment if omitted on the call; passing it explicitly is clearer.
-
-> On Solana, `latest` is `solana-stream@^1.x.x` which is Portal-only — `setGateway` is gone. `npx ncu --target latest` skips over the v2-with-apiKey configuration entirely. To keep on v2 with API-key auth, pin `^0.5.0` instead.
+> For v2-with-`apiKey` (staging on a branch before the Portal migration), see "(Optional) Add the v2 gateway API key" near the top of this skill — same instructions for both chains, with the Solana version cut-off being `@subsquid/solana-stream@^0.5.0`.
 
 ### Step 1 — Code cleanup, then upgrade packages
 
@@ -485,9 +500,11 @@ Typical minimum for a swap-style instruction handler:
 
 Full table with fixes in `references/common-errors.md`.
 
+**Either chain (v2-with-apiKey staging)** — `TS2353: 'apiKey' does not exist in type 'GatewaySettings'` (need `@subsquid/evm-processor@^1.30.0` on EVM or `@subsquid/solana-stream@^0.5.0` on Solana).
+
 **EVM** — `TS2353 ... 'address' does not exist` on `.addLog` (filters → `where:`, related-items → `include:`) · `'evmLog' does not exist in type 'FieldSelection'` (rename to `log:`) · `'getBlockStream' does not exist on type 'DataSourceBuilder'` (missing `.build()`) · `Property 'address'/'topics'/'data'/'timestamp'/'from' does not exist on type 'Log'` (field not in `.setFields()`) · `Property 'height' does not exist on type 'BlockHeader'` (use `block.header.number`) · `Module '@subsquid/evm-processor' has no exported member 'decodeHex'`/`'assertNotNull'` (retarget to `@subsquid/util-internal-hex` / `@subsquid/util-internal`).
 
-**Solana** — `Module '"@subsquid/solana-stream"' has no exported member 'SolanaRpcClient'` (drop import + `.setRpc`) · `TS2353: 'apiKey' does not exist in type 'GatewaySettings'` (need `solana-stream@^0.5.0`) · `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0` (fixed in `solana-stream@^1.1.1`) · `HttpError: Got 404 ... solana-mainnet dataset starts from <height> block` (bump `from:` above the value in the 404 body, or finish the Portal migration) · `Property 'slot' does not exist on type 'BlockHeader'` (use `block.header.number`) · `Property 'preMint'/'postMint' does not exist on type 'TokenBalance<F>'` (add to `.setFields({ tokenBalance: {...} })`) · `Property 'signatures'/'accountKeys' does not exist on type 'Transaction'` (field not in `.setFields()`) · indexer exits on transient HTTP errors (`http: { retryAttempts: Infinity }`).
+**Solana** — `Module '"@subsquid/solana-stream"' has no exported member 'SolanaRpcClient'` (drop import + `.setRpc`) · `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0` (fixed in `solana-stream@^1.1.1`) · `HttpError: Got 404 ... solana-mainnet dataset starts from <height> block` (bump `from:` above the value in the 404 body, or finish the Portal migration) · `Property 'slot' does not exist on type 'BlockHeader'` (use `block.header.number`) · `Property 'preMint'/'postMint' does not exist on type 'TokenBalance<F>'` (add to `.setFields({ tokenBalance: {...} })`) · `Property 'signatures'/'accountKeys' does not exist on type 'Transaction'` (field not in `.setFields()`) · indexer exits on transient HTTP errors (`http: { retryAttempts: Infinity }`).
 
 ## References
 

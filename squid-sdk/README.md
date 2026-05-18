@@ -14,8 +14,9 @@ npx skills add subsquid-labs/agent-skills/squid-sdk --all
 
 Migrates an existing Squid SDK indexer — EVM or Solana — off the v2 gateway and onto the Portal data source. Mirrors the official guides ([EVM](https://docs.sqd.dev/en/sdk/migration/evm-gateway-to-portal), [Solana](https://docs.sqd.dev/en/sdk/migration/solana-gateway-to-portal)) and fills in gaps the docs miss:
 
+- Both chains: optional v2-with-`apiKey` step for staged migrations — `@subsquid/evm-processor@^1.30.0` on EVM, `@subsquid/solana-stream@^0.5.0` on Solana (both auto-read `SQD_API_KEY` from the environment).
 - EVM: the `evmLog` → `log` field-selection rename; `decodeHex` and `assertNotNull` import moves to `@subsquid/util-internal-hex` / `@subsquid/util-internal`; removal of `@subsquid/archive-registry` for older `lookupArchive` squids; unwinding the `EvmBatchProcessorFields<typeof processor>` typegen pattern; the `Block` ↔ `BlockData` swap; the flipped `DataHandlerContext` generic order; `block.height` → `block.header.number`.
-- Solana: ordering `SolanaRpcClient` removal *before* the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; the narrower Portal default field set (notably `tokenBalance.preMint` / `postMint` are no longer defaults); optional v2-with-`apiKey` step on `@subsquid/solana-stream@^0.5.0` for staged migrations.
+- Solana: ordering `SolanaRpcClient` removal *before* the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; the narrower Portal default field set (notably `tokenBalance.preMint` / `postMint` are no longer defaults).
 
 **Install just this skill:**
 ```bash

@@ -4,6 +4,34 @@ Each entry maps back to a step in `SKILL.md`.
 
 ---
 
+## Both chains (v2-with-`apiKey` staging)
+
+### `TS2353: 'apiKey' does not exist in type 'GatewaySettings'`
+
+On `.setGateway({ url, apiKey: process.env.SQD_API_KEY })` while still on a v2 squid (pre-Portal migration). Applies to both EVM and Solana.
+
+**Cause:** `apiKey` on `GatewaySettings` was added in:
+
+| Chain | Package | First version with `apiKey` |
+|---|---|---|
+| EVM | `@subsquid/evm-processor` | `1.30.0` |
+| Solana | `@subsquid/solana-stream` | `0.5.0` |
+
+Earlier versions still have `{ url, requestTimeout? }` and reject the field.
+
+**Fix:** bump to a version that supports `apiKey`:
+```bash
+# EVM
+npm i @subsquid/evm-processor@^1.30.0
+
+# Solana
+npm i @subsquid/solana-stream@^0.5.0
+```
+
+Going to `latest` instead lands on the Portal stack (`@subsquid/evm-stream` for EVM, `@subsquid/solana-stream@^1.x.x` for Solana) where `.setGateway` is gone.
+
+---
+
 ## EVM
 
 ### `TS2353: Object literal may only specify known properties, and 'address' does not exist in type ...`
@@ -301,19 +329,6 @@ After upgrading `@subsquid/solana-stream` to `^1.x.x`.
 -    strideConcurrency: 10,
 -  })
 ```
-
-### `TS2353: 'apiKey' does not exist in type 'GatewaySettings'`
-
-On `.setGateway({ url, apiKey: process.env.SQD_API_KEY })` while still on v2.
-
-**Cause:** `apiKey` on `GatewaySettings` was added in `@subsquid/solana-stream@0.5.0`. Earlier 0.x versions still have `{ url, requestTimeout? }`.
-
-**Fix:** bump to the highest 0.x that supports `apiKey`:
-```bash
-npm i @subsquid/solana-stream@^0.5.0
-```
-
-Going to `latest` instead lands on `^1.x.x` (Portal) where `.setGateway` is gone.
 
 ### `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0`
 

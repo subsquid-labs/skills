@@ -167,6 +167,30 @@ If the handler does direct RPC calls, also add:
  })
 ```
 
+## Optional: API key on v2 gateway (pre-Portal)
+
+If staging on a branch and keeping the v2 squid working with API-key auth before the Portal migration:
+
+```bash
+npm i @subsquid/evm-processor@^1.30.0
+```
+
+```diff
+- .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
++ .setGateway({
++   url: 'https://v2.archive.subsquid.io/network/ethereum-mainnet',
++   apiKey: process.env.SQD_API_KEY,
++ })
+```
+
+```bash
+echo 'SQD_API_KEY=...' >> .env
+echo 'SQD_API_KEY=your_api_key_here' >> .env.example
+echo '.env' >> .gitignore
+```
+
+`apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/evm-processor@1.30.0`; earlier versions reject the field.
+
 ## Reference templates
 
 - <https://github.com/subsquid-labs/squid-evm-rt-template/tree/with-logger> — minimal Portal squid with logger
