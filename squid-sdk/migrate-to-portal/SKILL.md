@@ -9,10 +9,7 @@ metadata:
 
 # Migrate a Squid to Portal
 
-Walks the migration of an existing Squid SDK indexer onto the Portal data source. EVM and Solana have different package sets; the migration shape (data source + types + field selection) is parallel. Upstream docs:
-
-- EVM: <https://docs.sqd.dev/en/sdk/migration/evm-gateway-to-portal>
-- Solana: <https://docs.sqd.dev/en/sdk/migration/solana-gateway-to-portal>
+Walks the migration of an existing Squid SDK indexer onto the Portal data source. EVM and Solana have different package sets; the migration shape (data source + types + field selection) is parallel. Upstream doc (unified, both chains): <https://docs.sqd.dev/en/sdk/migration/gateway-to-portal>.
 
 ## When to use this skill
 
@@ -43,40 +40,41 @@ Activate when the user says any of:
 
 3. **Inventory direct RPC calls in the batch handler.** If the handler uses `new abi.Contract(ctx, header, address)` or `Multicall(...)` for contract reads, the migration needs the optional RPC-client step.
 
-4. **Commit / branch first.** The migration touches imports, types, and the processor entrypoint.
+4. **Determine whether the source squid uses real-time data.** Check for `.setRpcEndpoint()` (EVM) or `.setRpc()` (Solana) alongside `.setGateway()`. A gateway-only squid (no RPC) was processing finalized data only — preserve that mode after the migration by setting `supportHotBlocks: false` on the database (see the EVM Step 7 / Solana Step 4 notes). A squid with both was real-time; default `supportHotBlocks: true`.
+
+5. **Check for prior Portal-beta usage.** If the squid already calls `.setPortal(...)` (from the Portal beta) alongside `.setRpcEndpoint()`, treat the existing `.setPortal` call the same way as a `.setGateway` — remove it and the surrounding processor initialization, then set up the new Portal data source as below.
+
+6. **Commit / branch first.** The migration touches imports, types, and the processor entrypoint.
+
+7. **Node.js 22+** is required.
 
 ---
 
-## (Required from 2026-05-19 12:00 UTC) Add the v2 gateway API key — EVM or Solana
+## Add the v2 gateway API key — EVM only (alternative to migrating)
 
-Per the upstream changelog (<https://docs.sqd.dev/changelog/gateway-api-keys>), authenticated calls to the v2 gateway are **mandatory from May 19, 2026 at 12:00 UTC** for self-hosted setups. Skip this section only if:
+As of the May 19, 2026 12:00 UTC cutover, authenticated calls to the v2 gateway are **mandatory** for self-hosted setups (see <https://docs.sqd.dev/changelog/gateway-api-keys>). **Migrating to Portal is the recommended path** — Portal needs no API key. This v2-with-`apiKey` configuration is the alternative if you must stay on the v2 gateway for now.
 
-- your squid runs on **SQD Cloud** (Cloud injects the key for you), or
-- your squid is already on **Portal** (no `setGateway` call), or
-- your squid uses **RPC only** (no `setGateway` call).
+Only use this section if the user wants to stay on EVM v2 gateways for now. When in doubt, ask them.
 
-Otherwise, the v2 archive will reject anonymous requests once the cutover lands; add the API key now even if the Portal migration is on a branch.
+**On Solana, always migrate to the Portal instead.** For now it's possible to use the v2 Solana gateway with a key, but it's heavily discouraged.
 
-**Get a key:** register at <https://portal.sqd.dev/app> and create a gateway API key.
+To access v2 gateways with a key:
 
-The `apiKey` field on the gateway settings is supported by:
+1. **Get a key:** register at <https://portal.sqd.dev/app> and create a gateway API key.
+
+2. The `apiKey` field on the gateway settings is supported by:
 
 | Chain | Package | First version with `apiKey` |
 |---|---|---|
 | EVM | `@subsquid/evm-processor` | `1.30.0` (still v2; `setGateway`-shaped) |
-| Solana | `@subsquid/solana-stream` | `0.5.0` (highest 0.x; still `setGateway`-shaped) |
 
 If your squid is on an older release, bump to at least the version above before adding `apiKey`. Older versions reject the field with `TS2353: 'apiKey' does not exist in type 'GatewaySettings'`.
 
 ```bash
-# EVM
 npm i @subsquid/evm-processor@^1.30.0
-
-# Solana
-npm i @subsquid/solana-stream@^0.5.0
 ```
 
-Then convert the call:
+3. Then convert the call:
 
 ```diff
 - .setGateway('https://v2.archive.subsquid.io/network/<slug>')
@@ -94,7 +92,7 @@ echo '.env' >> .gitignore
 
 Both `GatewaySettings.apiKey` definitions document "Defaults to `SQD_API_KEY`" — the field is auto-read from the environment if omitted on the call. Passing it explicitly is clearer.
 
-> Going to `latest` instead skips over the v2-with-`apiKey` configuration: on EVM, `latest` is `@subsquid/evm-stream`/`@subsquid/evm-objects` (Portal stack) where `setGateway` is gone; on Solana, `latest` is `@subsquid/solana-stream@^1.x.x` (Portal-only) where `setGateway` is also gone. Pin the v2 version above only if you need the intermediate v2-with-auth stage; otherwise the Portal migration below makes API keys moot.
+> Going to `latest` instead skips over the v2-with-`apiKey` configuration: on EVM, `latest` is `@subsquid/evm-stream`/`@subsquid/evm-objects` (Portal stack) where `setGateway` is gone. Pin the v2 version above only if you need the intermediate v2-with-auth stage; otherwise the Portal migration below makes API keys moot.
 
 Reference docs:
 - Changelog: <https://docs.sqd.dev/changelog/gateway-api-keys>
@@ -311,11 +309,20 @@ run(dataSource, db, async (simpleCtx) => {
 
 ### Step 7 — Hot blocks on the store
 
+For a real-time squid (the v2 source had both `.setGateway()` and `.setRpcEndpoint()`):
+
 ```ts
 const db = new TypeormDatabase({ supportHotBlocks: true })
 ```
+`{supportHotBlocks: true}` here is just to keep things explicit: it is the default. This regime is required for the store to apply forked-block rollbacks once the indexer reaches the chain head. Other store backends accept the same option.
 
-Required for the store to apply forked-block rollbacks once the indexer reaches the chain head. Without it, writes are rejected when Portal starts delivering unfinalized blocks. Other store backends accept the same option.
+For a **finalized-only** squid (the v2 source had `.setGateway()` only, no `.setRpcEndpoint()` — the regime where the squid processes only finalized data, suitable for forwarding into append-only destinations), preserve that behavior by explicitly setting:
+
+```ts
+const db = new TypeormDatabase({ supportHotBlocks: false })
+```
+
+A Portal data source streaming into a target with `supportHotBlocks: false` automatically ingests from [`/finalized-stream`](https://docs.sqd.dev/en/api/evm/finalized-stream) instead of [`/stream`](https://docs.sqd.dev/en/api/evm/stream).
 
 ### Step 8 — Field selection
 
@@ -343,11 +350,15 @@ const fields = {
 
 If the handler reaches into a field not listed, TS rejects the access.
 
+### Step 9 — Re-sync the squid
+
+After the code compiles and a local run succeeds, re-sync from genesis so the new data path is exercised across the full history (catches bugs early).
+
+If deployed to [SQD Cloud](https://docs.sqd.dev/en/cloud), use the zero-downtime procedure: deploy into a new slot, wait for it to sync, then move the production tag to the new deployment (see [slots and tags](https://docs.sqd.dev/en/cloud/resources/slots-and-tags#zero-downtime-updates)). If you can't afford a re-sync, [re-deploy the squid](https://docs.sqd.dev/en/sdk/squid-sdk/squid-cli/deploy) **without resetting its database** (Cloud) or just restart it with its code updated (self-hosted).
+
 ---
 
 ## Solana migration
-
-> For v2-with-`apiKey` (staging on a branch before the Portal migration), see "(Optional) Add the v2 gateway API key" near the top of this skill — same instructions for both chains, with the Solana version cut-off being `@subsquid/solana-stream@^0.5.0`.
 
 ### Step 1 — Code cleanup, then upgrade packages
 
@@ -373,13 +384,7 @@ npx --yes npm-check-updates --filter "@subsquid/*" --target "@latest" --upgrade
 npm install   # or pnpm install / yarn install
 ```
 
-This bumps `@subsquid/solana-stream` to `^1.x.x` (currently `1.1.1`), `@subsquid/solana-objects` to `^1.x.x`, `@subsquid/batch-processor` to `^1.x.x`, and `@subsquid/typeorm-store` to `^1.x.x`.
-
-If install fails with `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0`, your `solana-stream` resolved to `1.1.0` (which declared a stale runtime dep on `solana-rpc`). Fixed in `1.1.1`; force it:
-
-```bash
-npm install @subsquid/solana-stream@^1.1.1
-```
+This bumps `@subsquid/solana-stream` to `^1.x.x`, `@subsquid/solana-objects` to `^1.x.x`, `@subsquid/batch-processor` to `^1.x.x`, and `@subsquid/typeorm-store` to `^1.x.x`.
 
 ### Step 2 — Rewrite the data source
 
@@ -405,7 +410,7 @@ const dataSource = new DataSourceBuilder()
 Structural changes:
 
 1. Replace `.setGateway(...)` (and `.setRpc({...})` if present) with `.setPortal({ url, http })`. `http: { retryAttempts: Infinity }` is recommended for production — without it the indexer exits on transient non-2xx Portal responses.
-2. Convert the block-range `from` from a block height to a slot number. Solana exposes both; the v2 archive used heights, Portal uses slots. Use the interactive bisection converter embedded at <https://docs.sqd.dev/en/sdk/migration/solana-gateway-to-portal> (binary-searches the public Portal).
+2. Convert the block-range `from` from a block height to a slot number. Solana exposes both; the v2 archive used heights, Portal uses slots. Use the interactive bisection converter embedded at <https://docs.sqd.dev/en/sdk/migration/height-to-slot> (binary-searches the public Portal).
 
 Selectors inside `.addInstruction({ where, include })` and field selection in `.setFields({...})` keep the same shape.
 
@@ -426,15 +431,23 @@ Same for `transaction.block.slot` / `instruction.block.slot` if those were trave
 
 ### Step 4 — Hot blocks on the store
 
+For a real-time squid (the v2 source had both `.setGateway()` and `.setRpc()`) use
 ```ts
-// before
 const database = new TypeormDatabase()
-
-// after
+```
+or
+```ts
 const database = new TypeormDatabase({ supportHotBlocks: true })
 ```
+- these are equivalent. Hot blocks support is required to apply Portal's hot-block updates once the indexer reaches the chain head.
 
-Required for the store to apply Portal's hot-block updates once the indexer reaches the chain head.
+For a **finalized-only** squid (the v2 source had `.setGateway()` only, no `.setRpc()`), explicitly set:
+
+```ts
+const database = new TypeormDatabase({ supportHotBlocks: false })
+```
+
+A Portal data source streaming into such a target automatically ingests from `/finalized-stream` instead of `/stream`, preserving the finalized-only regime.
 
 ### Step 5 — Field selection
 
@@ -468,6 +481,14 @@ Typical minimum for a swap-style instruction handler:
 ```
 
 `block.header.number` (the slot on Solana) is always available without being requested. Block **height** is not — request via `block: { height: true }` if your handler reads it.
+
+### Step 6 — Re-sync the squid
+
+After the code compiles and a local run succeeds, re-sync from genesis so the new data path is exercised across the full history (catches bugs early).
+
+If deployed to [SQD Cloud](https://docs.sqd.dev/en/cloud), use the zero-downtime procedure: deploy into a new slot, wait for it to sync, then move the production tag to the new deployment (see [slots and tags](https://docs.sqd.dev/en/cloud/resources/slots-and-tags#zero-downtime-updates)).
+
+If you can't afford a re-sync, [re-deploy the squid](https://docs.sqd.dev/en/sdk/squid-sdk/squid-cli/deploy) **without resetting its database** (Cloud) or just restart it (self-hosted). On Solana, if the existing DB stores block heights and the new code expects slots in the status row, see <https://docs.sqd.dev/en/sdk/migration/solana-resync-workaround>.
 
 ---
 

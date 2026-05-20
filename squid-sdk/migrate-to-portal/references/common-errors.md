@@ -6,7 +6,7 @@ Each entry maps back to a step in `SKILL.md`.
 
 ## Both chains (v2-with-`apiKey`)
 
-> Required from **May 19, 2026 12:00 UTC** for self-hosted setups. Cloud-hosted squids are unaffected. See <https://docs.sqd.dev/changelog/gateway-api-keys>.
+> The v2 gateway requires authentication as of **May 19, 2026 12:00 UTC** for self-hosted setups (Cloud is unaffected). Migrating to Portal is the recommended path — it needs no API key. The v2-with-`apiKey` config below is the alternative for squids that must stay on v2 a bit longer. See <https://docs.sqd.dev/changelog/gateway-api-keys>.
 
 ### `TS2353: 'apiKey' does not exist in type 'GatewaySettings'`
 
@@ -101,7 +101,7 @@ Both packages are transitive deps of `@subsquid/evm-stream` — no extra install
 
 (Or `Property 'transactionHash' does not exist` on a log after listing `evmLog: { transactionHash: true }`.)
 
-**Cause:** the old field-selection key for logs was `evmLog`. The new key is `log`. In `@subsquid/evm-processor@^1.21.0` (still v2) the `evmLog` key is accepted by the builder but no longer projects `transactionHash` onto the resulting `Log` type. In `@subsquid/evm-stream` (Portal) the `evmLog` key is removed entirely.
+**Cause:** the field-selection key for logs was renamed from `evmLog` to `log` in the pre-`@subsquid/evm-processor@1.0.0` era. Squids that haven't been touched since then still use the old key. In `@subsquid/evm-stream` (Portal) the `evmLog` key is removed entirely.
 
 **Fix:** rename the key:
 ```ts
@@ -342,18 +342,6 @@ After upgrading `@subsquid/solana-stream` to `^1.x.x`.
 -  })
 ```
 
-### `ETARGET No matching version found for @subsquid/solana-rpc@^1.0.0`
-
-`solana-stream@1.0.0` and `@1.1.0` declared `@subsquid/solana-rpc` and `@subsquid/solana-rpc-data` as runtime deps; no `1.0.0` stable was published for either. Fixed in `solana-stream@1.1.1`, which drops both deps from `dependencies`.
-
-**Fix:** force `^1.1.1`:
-```bash
-rm -rf node_modules package-lock.json
-npm install @subsquid/solana-stream@^1.1.1
-```
-
-Or re-run `npx ncu --target latest --upgrade` (which resolves to `1.1.1` from the registry's `latest` dist-tag).
-
 ### `HttpError: Got 404` with body `solana-mainnet dataset starts from <height> block`
 
 Hit while still on the v2 archive (pre-Portal migration).
@@ -459,7 +447,7 @@ const database = new TypeormDatabase({ supportHotBlocks: true })
 
 The `from` value is still a block height; Portal expects a slot. Heights and slots are different sequences on Solana — slots have gaps for skipped slots, heights don't.
 
-**Fix:** use the bisection converter embedded at <https://docs.sqd.dev/en/sdk/migration/solana-gateway-to-portal> to translate height → slot.
+**Fix:** use the bisection converter embedded at <https://docs.sqd.dev/en/sdk/migration/height-to-slot> to translate height → slot.
 
 ### Need RPC fallback after the migration?
 

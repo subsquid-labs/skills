@@ -112,7 +112,7 @@ After `npx --yes npm-check-updates --filter "@subsquid/*" --target "@latest" --u
 
 ## Block height → slot conversion
 
-The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev/en/sdk/migration/solana-gateway-to-portal>. It binary-searches the public Portal to translate a v2 height into the corresponding slot. Reference values from the doc and the canonical `solana-example/master`:
+The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev/en/sdk/migration/height-to-slot>. It binary-searches the public Portal to translate a v2 height into the corresponding slot. Reference values from the doc and the canonical `solana-example/master`:
 
 | Height (v2)  | Slot (Portal) |
 |--------------|---------------|
