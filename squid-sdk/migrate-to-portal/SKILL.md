@@ -22,6 +22,7 @@ Activate when the user says any of:
 - mentions removing `SolanaRpcClient`
 - asks about Solana block-height-to-slot conversion
 - hits compile errors on `EvmBatchProcessor`, `evmLog`, `block.height`, or `block.header.slot` after a bump
+- needs to migrate `processor.setPrometheusPort()` / `processor.setPrometheusServer()` (EVM only — removed with `EvmBatchProcessor`)
 
 ## Pre-flight
 
@@ -283,6 +284,23 @@ Block-shortcut renames (the old top-level `block.X` shortcuts are gone; the valu
 - `block.height` → `block.header.number` (`.height` is also present on the new `BlockHeader` but marked `@deprecated`; prefer `.number`)
 - `block.timestamp` → `block.header.timestamp`
 - `log.block.height` → `log.block.number` (after `augmentBlock`)
+
+**`processor.setPrometheusPort()` / `processor.setPrometheusServer()`** are gone with `EvmBatchProcessor`. Move them onto a `PrometheusServer` instance and hand it to `run()` via the `prometheus` option (the runner still attaches the built-in `sqd_processor_*` metrics and calls `.serve()` itself):
+
+```diff
+-processor.setPrometheusPort(3000)
+-processor.setPrometheusServer(myServer)
+-processor.run(db, async (ctx) => { /* ... */ })
++import {run, PrometheusServer} from '@subsquid/batch-processor'
++
++const prometheus = new PrometheusServer()
++prometheus.setPort(3000)
++// prometheus.addMetricsSink({ register(registry) { /* custom prom-client metrics */ } })
++
++run(dataSource, db, async (simpleCtx) => { /* ... */ }, {prometheus})
+```
+
+`prometheus.setPort()` takes precedence over `PROCESSOR_PROMETHEUS_PORT` / `PROMETHEUS_PORT` (which still work as the default if `setPort` is skipped). For custom metrics, declare them with `prom-client` and register on the server's private registry via `addMetricsSink()` so they share the `/metrics` endpoint with `sqd_processor_*` — see [`squid-evm-rt-template`](https://github.com/subsquid-labs/squid-evm-rt-template) for a worked example.
 
 ### Step 6 — (Optional) RPC client for direct chain reads
 
