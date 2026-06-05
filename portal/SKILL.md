@@ -351,8 +351,8 @@ Always add address/topic/programId filters and reasonable block ranges.
 - **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** — Complete Portal documentation
 - **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** — EVM API specification
 - **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** — Solana API specification
-- **[Substrate OpenAPI Schema](https://beta.docs.sqd.dev/files/substrate-openapi.yaml)** — Substrate API specification
-- **[Bitcoin OpenAPI Schema](https://beta.docs.sqd.dev/files/bitcoin-openapi.yaml)** — Bitcoin API specification
-- **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid-fills/openapi.yaml)** — Hyperliquid API specification
+- **[Substrate OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/substrate/openapi.yaml)** — Substrate API specification
+- **[Bitcoin OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/bitcoin/openapi.yaml)** — Bitcoin API specification
+- **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid/openapi-fills.yaml)** — Hyperliquid API specification
 - **Event Signature Calculator:** https://www.4byte.directory/
 - **Function Selector Database:** https://www.4byte.directory/
