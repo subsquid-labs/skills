@@ -293,7 +293,7 @@ Don't optimize if:
 
 ## Official Subsquid Documentation
 
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** - Complete performance optimization guide
-- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Portal API performance best practices
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** - Portal API filtering capabilities
+- **[llms-full.txt](https://docs.sqd.dev/llms-full.txt)** - Complete performance optimization guide
+- **[skill.md](https://docs.sqd.dev/skill.md)** - Portal API performance best practices
+- **[EVM OpenAPI Schema](https://docs.sqd.dev/en/ai/evm-openapi)** - Portal API filtering capabilities
 - **[Available Datasets](https://portal.sqd.dev/datasets)** - Network-specific performance characteristics

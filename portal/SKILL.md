@@ -1,17 +1,18 @@
 ---
 name: portal
-description: Query blockchain data across 210+ chains using SQD Portal. Covers EVM logs/transactions/traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin transactions/inputs/outputs with dataset discovery and verification.
+description: Query blockchain data across 225+ chains with SQD Portal, and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines.
 allowed-tools: [Bash, WebFetch, WebSearch]
-compatibility: Targets Portal MCP server v0.7.8. Older versions exposed differently named tools — see "MCP Tools Quick Reference" below.
 metadata:
   author: subsquid
-  version: "1.1.4"
+  version: "1.1.5"
   category: portal-core
 ---
 
 # Portal
 
-Query and analyze blockchain data across 210+ chains using the SQD Portal Stream API. Covers all supported data types: EVM logs, transactions, traces, Solana instructions, Substrate events/calls/extrinsics, Hyperliquid fills, and Bitcoin blocks, transactions, inputs, and outputs.
+Query and analyze blockchain data across 225+ chains using SQD Portal. Use this skill to decide whether the job belongs in SQD Portal MCP tools, a raw Portal Stream API/curl request, or a durable Pipes/Squid indexer.
+
+This skill should not be treated as a static copy of the MCP tool catalog. When the SQD Portal MCP server is available, read `sqd://tools` for the current grouped tool guide and `sqd://tools/{tool_name}` for exact per-tool guidance.
 
 ## When to Use This Skill
 
@@ -19,9 +20,31 @@ Use this skill when you need to:
 - Query blockchain event logs, transactions, traces, instructions, Substrate events/calls, or trade fills
 - Find the correct Portal dataset name for a blockchain
 - Analyze on-chain activity (token transfers, DeFi events, contract deployments, trading)
-- Use Portal MCP tools or the raw Stream API
+- Choose between Portal MCP tools, raw Portal Stream API/curl, or a durable Pipes/Squid indexer
+
+Use Portal MCP tools for bounded interactive answers, summaries, charts, investigation pivots, entity resolution, and normal chat-sized evidence.
+
+Use raw Portal Stream API or curl when the user asks for raw rows, full exports, exact reproducible requests, NDJSON/CSV/files, or a query shape that should run outside the MCP client.
+
+Recommend Pipes or a Squid when the user needs recurring sync, long backfills, joins, transformations, database storage, production APIs, alerts, dashboards, or app-owned indexed state.
 
 ---
+
+## Choose the Right SQD Surface
+
+| Need | Use | Why |
+|---|---|---|
+| Bounded answer in chat | Portal MCP tools | Best defaults, validation, normalized envelopes, pagination, freshness, and coverage notes |
+| Network, entity, or tool discovery | `sqd://tools`, `sqd://datasets`, discovery MCP tools | Keeps routing current without duplicating catalogs |
+| Raw rows or export | Portal Stream API / curl | Produces reproducible NDJSON and avoids chat preview truncation |
+| Production data product | Pipes / Squid | Durable indexing, transforms, storage, retries, and serving APIs |
+
+Default order:
+1. Read `sqd://tools` when MCP resources are available.
+2. Pick a public MCP tool for the user's job.
+3. Use response metadata to decide whether the answer is complete, paginated, sampled, capped, or partial.
+4. Fall back to raw Portal Stream API only when the user needs raw/export/reproducible output or MCP output is too compact.
+5. Recommend Pipes/Squid when the question is no longer an ad hoc query.
 
 ## Step 1: Find the Correct Dataset Name
 
@@ -69,6 +92,8 @@ curl -I https://portal.sqd.dev/datasets/{dataset-name}/metadata
 ```
 
 Or use MCP: `portal_list_networks` with `query: "arbitrum"` to search.
+
+If the user names a token, contract, protocol, pool, or Hyperliquid coin, resolve it before querying. Use `portal_resolve_entity` when MCP is available; otherwise use trusted token lists, protocol docs, or Portal API evidence rather than memory.
 
 ---
 
@@ -223,7 +248,9 @@ TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
 
 ## MCP Tools Quick Reference
 
-If Portal MCP tools are available, prefer them over raw API calls. Tool names below are for **Portal MCP server v0.7.8** — earlier versions used a flatter naming scheme without the chain-family prefix (e.g., `portal_query_logs` → `portal_evm_query_logs`).
+If Portal MCP tools are available, prefer them for bounded interactive work. The current Portal MCP server exposes 25 public tools plus 3 advanced/debug tools. Legacy aliases are not exposed. Public query params use `network`; discovery filters use `vm`.
+
+Use `sqd://tools` or HTTP `/tools` when available for the live catalog. The table below is a compact orientation, not the source of truth.
 
 ### Discovery & Overview
 
@@ -232,6 +259,7 @@ If Portal MCP tools are available, prefer them over raw API calls. Tool names be
 | `portal_list_networks` | Search networks by name, chain type, network type |
 | `portal_get_network_info` | Get dataset metadata: latest block, start block, tables |
 | `portal_get_head` | Get current/latest block for a dataset |
+| `portal_resolve_entity` | Resolve token symbols, contracts, protocols, pools, and Hyperliquid coins into query-ready filters |
 | `portal_get_recent_activity` | Recent activity on a dataset with auto block calculation |
 | `portal_debug_resolve_time_to_block` | Find block number at a timestamp — works for real-time blocks too |
 | `portal_debug_query_blocks` | Inspect raw block headers for diagnostics |
@@ -271,6 +299,7 @@ If Portal MCP tools are available, prefer them over raw API calls. Tool names be
 | `portal_hyperliquid_query_fills` | Trade fills by coin, user, direction |
 | `portal_hyperliquid_get_analytics` | Aggregate fill metrics (volume, count, by coin) |
 | `portal_hyperliquid_get_ohlc` | OHLC candles from Hyperliquid fills |
+| `portal_debug_hyperliquid_query_replica_commands` | Advanced/debug access to low-level replica commands |
 
 ### Bitcoin Queries
 
@@ -285,6 +314,44 @@ If Portal MCP tools are available, prefer them over raw API calls. Tool names be
 |------|----------|
 | `portal_get_wallet_summary` | Wallet txs + token transfers in one call |
 | `portal_get_time_series` | Bucketed metrics over time (tx count, gas, etc.) |
+
+---
+
+## Raw Portal Stream API / Curl Fallback
+
+Use raw Stream API when:
+- The user asks for raw rows, the last N records, an export, CSV/JSON/NDJSON, or reproducible curl.
+- MCP compact output proves the query shape but truncates the payload.
+- You need exact Portal request bodies for debugging or handoff.
+- The user needs to run the same request outside the MCP client.
+
+Endpoint shape:
+
+```bash
+curl -sS -X POST "https://portal.sqd.dev/datasets/{dataset}/stream" \
+  -H "content-type: application/json" \
+  -H "accept: application/x-ndjson" \
+  --data @query.json > results.ndjson
+```
+
+Always keep raw queries bounded. Prefer a short MCP discovery step first, such as current head/network freshness or entity resolution, then use that evidence to construct the curl request.
+
+---
+
+## Durable Pipelines: Pipes and Squid
+
+Do not stretch ad hoc Portal queries into production architecture.
+
+Recommend Pipes or a Squid when the user needs:
+- repeated polling or real-time ingestion
+- historical backfills
+- joins across entities or datasets
+- durable storage
+- transformations and decoded domain models
+- app/backend APIs
+- alerts, dashboards, or scheduled jobs
+
+Phrase the handoff clearly: Portal MCP is for answering and exploring; raw Stream API is for reproducible one-off extraction; Pipes/Squid is for maintained data pipelines.
 
 ---
 
@@ -340,19 +407,20 @@ Always add address/topic/programId filters and reasonable block ranges.
 2. **Add topic0/sighash/discriminator** — another 10x
 3. **Use narrow block ranges** when exploring (100-10K blocks)
 4. **Request only needed fields** — reduces response size
-5. **Use MCP count/aggregate tools** for overview before querying full data
+5. **Use MCP summary, analytics, and time-series tools** for overview before querying full data
 
 ---
 
 ## Additional Resources
 
-- **[Available Datasets](https://portal.sqd.dev/datasets)** — Complete list of all 210+ supported networks
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** — Quick reference for Portal API
-- **[llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)** — Complete Portal documentation
-- **[EVM OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/evm/openapi.yaml)** — EVM API specification
-- **[Solana OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/solana/openapi.yaml)** — Solana API specification
-- **[Substrate OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/substrate/openapi.yaml)** — Substrate API specification
-- **[Bitcoin OpenAPI Schema](https://beta.docs.sqd.dev/en/api/catalog/bitcoin/openapi.yaml)** — Bitcoin API specification
-- **[Hyperliquid Fills OpenAPI](https://beta.docs.sqd.dev/en/api/catalog/hyperliquid/openapi-fills.yaml)** — Hyperliquid API specification
+- **[Available Datasets](https://portal.sqd.dev/datasets)** — Complete list of supported networks
+- **[Portal MCP Server](https://docs.sqd.dev/en/ai/mcp-server)** — Hosted MCP endpoint and current tool reference
+- **[llms.txt](https://docs.sqd.dev/llms.txt)** — Quick reference for Portal API
+- **[llms-full.txt](https://docs.sqd.dev/llms-full.txt)** — Complete Portal documentation
+- **[EVM OpenAPI Schema](https://docs.sqd.dev/en/ai/evm-openapi)** — EVM API specification
+- **[Solana OpenAPI Schema](https://docs.sqd.dev/en/ai/solana-openapi)** — Solana API specification
+- **[Substrate OpenAPI Schema](https://docs.sqd.dev/en/ai/substrate-openapi)** — Substrate API specification
+- **[Bitcoin OpenAPI Schema](https://docs.sqd.dev/en/ai/bitcoin-openapi)** — Bitcoin API specification
+- **[Hyperliquid Fills OpenAPI](https://docs.sqd.dev/en/ai/hyperliquid-openapi)** — Hyperliquid API specification
 - **Event Signature Calculator:** https://www.4byte.directory/
 - **Function Selector Database:** https://www.4byte.directory/

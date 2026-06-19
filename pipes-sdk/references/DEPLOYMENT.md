@@ -494,6 +494,6 @@ diff /tmp/schema_tables.txt /tmp/code_tables.txt
 
 ## Official Subsquid Documentation
 
-- **[llms.txt](https://beta.docs.sqd.dev/llms.txt)** - Quick deployment reference
-- **[skill.md](https://beta.docs.sqd.dev/skill.md)** - Deployment guide
+- **[llms.txt](https://docs.sqd.dev/llms.txt)** - Quick deployment reference
+- **[skill.md](https://docs.sqd.dev/skill.md)** - Deployment guide
 - **[Available Datasets](https://portal.sqd.dev/datasets)** - Network endpoints

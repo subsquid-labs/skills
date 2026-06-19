@@ -1,11 +1,11 @@
 ---
 name: pipes-sdk
-description: Build, configure, deploy, and troubleshoot blockchain indexers with the Subsquid Pipes SDK. Covers EVM, Solana, and Hyperliquid scaffolding via `@subsquid/pipes-cli`, runtime error diagnosis, sync performance tuning, and data quality validation.
+description: Build, configure, deploy, and troubleshoot durable blockchain indexers with the Subsquid Pipes SDK when Portal MCP or curl previews are insufficient for backfills, recurring syncs, joins, app-owned data, or production analytics.
 compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js LTS (v20 or v22) — avoid v25+.
 allowed-tools: [Bash, Read, Write, Edit, Grep]
 metadata:
   author: subsquid
-  version: "1.1.4"
+  version: "1.1.5"
   category: core
 ---
 
@@ -21,8 +21,26 @@ Activate when the user wants to:
 - **Optimize sync performance** — slow indexing, high memory, large ranges
 - **Validate data quality** — NULL checks, gaps, malformed addresses, duplicate events
 - **Deploy an indexer** — local Docker or ClickHouse Cloud
+- **Turn a Portal handoff into durable infrastructure** — when a Portal MCP answer or curl export is not enough
 
 Common trigger phrases: *"create a new indexer"*, *"my indexer crashed"*, *"error"*, *"not working"*, *"slow"*, *"optimize"*, *"deploy to ClickHouse Cloud"*, *"track X events on Ethereum/Solana/Hyperliquid"*.
+
+## Portal Handoff Workflow
+
+Use Pipes when a Portal MCP or raw Stream API workflow crosses from exploration into a maintained data product.
+
+Good Pipes triggers:
+- long historical backfills
+- recurring syncs or scheduled refresh
+- protocol-specific joins
+- normalized tables for an app/backend
+- custom metrics, alerts, or dashboards
+- transforms that should be versioned and tested
+- data too large for MCP chat responses or one-off curl files
+
+If the input includes a Portal `pipes_handoff` recipe, preserve its network, filters, time window, outputs, and validation hints. Treat the Portal MCP/curl result as the baseline, scaffold the indexer, and validate the first output against the closest Portal query over the same bounded window.
+
+Before scaffolding, say why Pipes is the right surface. Portal MCP is best for bounded answers and investigation pivots; Portal Stream API/curl is best for reproducible one-off extraction; Pipes is best for durable indexing, transforms, and storage.
 
 ## Critical Environment Constraints
 
@@ -224,11 +242,11 @@ Dashboard-grade ClickHouse patterns (time bucketing, conditional aggregation, pa
 
 ## Official Docs
 
-- **llms.txt quick reference:** [beta.docs.sqd.dev/llms.txt](https://beta.docs.sqd.dev/llms.txt)
-- **Full documentation:** [beta.docs.sqd.dev/llms-full.txt](https://beta.docs.sqd.dev/llms-full.txt)
-- **Comprehensive SDK guide:** [beta.docs.sqd.dev/skill.md](https://beta.docs.sqd.dev/skill.md)
+- **llms.txt quick reference:** [docs.sqd.dev/llms.txt](https://docs.sqd.dev/llms.txt)
+- **Full documentation:** [docs.sqd.dev/llms-full.txt](https://docs.sqd.dev/llms-full.txt)
+- **Comprehensive SDK guide:** [docs.sqd.dev/skill.md](https://docs.sqd.dev/skill.md)
 - **Available datasets:** [portal.sqd.dev/datasets](https://portal.sqd.dev/datasets)
 
 ## Related
 
-- **portal** — query blockchain data across 210+ chains via the SQD Portal Stream API (EVM logs, Solana instructions, Substrate events, Hyperliquid fills, Bitcoin). Use it to verify contract events, discover dataset names, and cross-check indexed data.
+- **portal** — query blockchain data across 225+ chains via Portal MCP or the SQD Portal Stream API. Use it to verify contract events, discover dataset names, cross-check indexed data, and decide when a query should become a Pipes/Squid pipeline.

@@ -19,7 +19,7 @@ if command -v sqd >/dev/null 2>&1; then
 else
   report_miss "sqd CLI not found"
   printf "      install: npm i -g @subsquid/cli\n"
-  printf "      docs:    https://beta.docs.sqd.dev/en/sdk/squid-sdk/squid-cli/\n"
+  printf "      docs:    https://docs.sqd.dev/en/sdk/squid-sdk/squid-cli/\n"
 fi
 
 # --- expect ---
@@ -57,7 +57,7 @@ if command -v sqd >/dev/null 2>&1; then
   if printf '%s' "$LOWER" | grep -Eq 'not auth|unauth|login|please run.*auth|api key'; then
     report_miss "sqd auth: not authenticated"
     printf "      run:   sqd auth -k <YOUR_API_KEY>\n"
-    printf "      docs:  https://beta.docs.sqd.dev/en/sdk/squid-sdk/squid-cli/auth/\n"
+    printf "      docs:  https://docs.sqd.dev/en/sdk/squid-sdk/squid-cli/auth/\n"
   elif [ $AUTH_RC -ne 0 ]; then
     report_warn "sqd auth: probe returned exit $AUTH_RC (auth status uncertain — continuing)"
   else
