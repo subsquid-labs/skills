@@ -1,6 +1,6 @@
 # SQD Agent Skills
 
-A collection of skills for AI coding agents working with SQD products. Skills extend agent capabilities for building, deploying, and optimizing blockchain indexers and data pipelines.
+A collection of skills for AI coding agents working with SQD products. Skills extend agent capabilities for querying Portal data, choosing the right SQD data surface, and building, deploying, and optimizing blockchain indexers and data pipelines.
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
 
@@ -8,8 +8,8 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 | Skill | Use Case |
 |-------|----------|
-| [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot blockchain indexers with the Pipes SDK (EVM, Solana, Hyperliquid) |
-| [**portal**](./portal/) | Query blockchain data across 210+ chains via the SQD Portal Stream API |
+| [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot durable blockchain indexers with the Pipes SDK (EVM, Solana, Hyperliquid) |
+| [**portal**](./portal/) | Query blockchain data across 225+ chains and choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid |
 | [**migrate-to-portal**](./squid-sdk/migrate-to-portal/) | Migrate an existing Squid SDK indexer (EVM or Solana) off the v2 gateway onto Portal |
 | [**squid-perf**](./squid-sdk/squid-perf/) | Compare indexer sync-time performance across runs |
 
@@ -51,6 +51,15 @@ Query all USDC transfers on Base between blocks 10M–11M
 What's the correct Portal dataset name for Arbitrum?
 ```
 ```
+Show me the last 200 BTC perp fills on Hyperliquid
+```
+```
+Give me a curl command that exports raw Base USDC transfers as NDJSON
+```
+```
+This should become a recurring dashboard - should I use Portal MCP or build an indexer?
+```
+```
 Track BTC/ETH/SOL perpetual futures fills on Hyperliquid
 ```
 ```
@@ -62,7 +71,7 @@ Why is my indexer syncing slowly?
 - **SQD:** [sqd.dev](https://sqd.dev)
 - **Pipes SDK:** [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
 - **Squid SDK:** [github.com/subsquid/squid-sdk](https://github.com/subsquid/squid-sdk)
-- **Documentation:** [beta.docs.sqd.dev](https://beta.docs.sqd.dev)
+- **Documentation:** [docs.sqd.dev](https://docs.sqd.dev)
 - **Portal API catalog:** [portal.sqd.dev/datasets](https://portal.sqd.dev/datasets)
 - **Agent Skills format:** [agentskills.io](https://agentskills.io/)
 

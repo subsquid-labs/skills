@@ -14,7 +14,7 @@ Skills live at the repo root. The skill directory name matches the skill's front
 pipes-sdk/                 # Build, deploy, troubleshoot Pipes SDK indexers
   SKILL.md
   references/
-portal/                    # Query SQD Portal across 210+ chains
+portal/                    # Query SQD Portal across 225+ chains
   SKILL.md
   references/
 squid-sdk/
@@ -123,7 +123,7 @@ Some skills benefit from MCP servers (configured in `.claude/settings.json` at t
 All Pipes-related skills use `npx @iankressin/pipes-cli@latest` for project generation. Skills should:
 
 - Use the published npm package (not local SDK paths)
-- Reference `beta.docs.sqd.dev` for documentation
+- Reference `docs.sqd.dev` for documentation
 - Follow the research workflow in `pipes-sdk/references/RESEARCH_CHECKLIST.md`
 
 ## Validation
