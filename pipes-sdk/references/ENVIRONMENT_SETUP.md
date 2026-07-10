@@ -14,7 +14,7 @@ This guide helps you:
 
 Before building indexers, ensure you have:
 
-- [ ] Node.js LTS (v20 or v22 recommended; avoid v25.x)
+- [ ] Node.js v22 LTS (>= 22.15.0 — required by `@subsquid/pipes`; avoid v25.x)
 - [ ] npm >= 8.0.0 (or bun >= 1.0.0)
 - [ ] Docker running
 - [ ] ClickHouse container (for local development)
@@ -25,7 +25,7 @@ Before building indexers, ensure you have:
 
 ### 1. Node.js
 
-**Required Version**: >= 18.0.0 (LTS recommended: v20 or v22)
+**Required Version**: >= 22.15.0 — `@subsquid/pipes` (1.0.0-alpha.16+) declares `engines.node >= 22.15.0`, so v20 no longer qualifies.
 
 **WARNING: Avoid Node.js v25.x** — It has known zstd decompression bugs that cause random crashes when streaming data from the Portal API into ClickHouse.
 
@@ -279,6 +279,8 @@ pnpx @subsquid/pipes-cli@1.0.0-alpha.4 --version
 ```
 
 **Note**: No local SDK installation needed - CLI is used via pnpx
+
+**Manual (non-CLI) setups — install the alpha tag**: a bare `npm install @subsquid/pipes` resolves to the npm `latest` tag, which is `0.1.0-beta.17` — the pre-1.0 API, a different SDK entirely. For 1.0 manual setups you must install `@subsquid/pipes@alpha` (or pin `"@subsquid/pipes": "alpha"` in `package.json`). CLI-scaffolded projects already pin `"@subsquid/pipes": "alpha"`, so only hand-written projects hit this trap.
 
 ## Platform-Specific Notes
 

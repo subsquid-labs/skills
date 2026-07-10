@@ -31,6 +31,8 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 
 **Default recommendation:** `ReplacingMergeTree(block_timestamp)`
 
+**CLI scaffold default:** the Pipes CLI now generates `CollapsingMergeTree(sign)` tables — each includes a `sign Int8 DEFAULT 1` column and an `INDEX _sqd_rollback_idx block_number TYPE minmax GRANULARITY 1`, not a plain `MergeTree`. This is what makes fork rollbacks propagate through materialized views: the target inserts `sign = -1` cancel rows for rolled-back blocks, and the minmax index keeps the block-range delete cheap. Prefer it over `ReplacingMergeTree` when downstream MVs must stay consistent across reorgs.
+
 ## Standard Blockchain Columns (Always Include)
 
 ```sql
@@ -104,20 +106,22 @@ PARTITION BY toYYYYMM(block_timestamp)
 
 ## Timestamp Handling
 
-**CRITICAL**: ClickHouse `DateTime` expects **seconds** since epoch, but JavaScript `Date.getTime()` returns **milliseconds**.
+**CRITICAL**: choose the column type first, then match the JS value to its precision. There is no blanket "always divide by 1000" rule — the divisor depends on the column's declared precision.
+
+- **`DateTime`** (no precision arg) stores **seconds** since epoch → feed `Math.floor(d.timestamp.getTime() / 1000)`.
+- **`DateTime(3)` / `DateTime64(3)`** stores **milliseconds** → feed `d.timestamp.getTime()` undivided. ClickHouse parses the `DateTime(3)` column token as `DateTime64(3)`, so the stored ticks are epoch-**ms** and the raw `getTime()` value is already correct.
 
 ```typescript
-// WRONG — produces 1970 dates in ClickHouse
-timestamp: d.timestamp.getTime(),  // milliseconds!
+// Column: DateTime  (seconds)
+timestamp: Math.floor(d.timestamp.getTime() / 1000),
 
-// CORRECT — proper dates
-timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds
-
-// ALSO CORRECT — if using enrichEvents (auto-generated helper)
-// enrichEvents handles the division internally
+// Column: DateTime(3) / DateTime64(3)  (milliseconds) — the CLI default scaffold
+timestamp: d.timestamp.getTime(),  // do NOT divide
 ```
 
-If you see `1970-01-28` dates in your ClickHouse data, this is almost certainly the cause.
+**Both** mismatches produce ~1970 dates: milliseconds into a seconds `DateTime`, *and* seconds into a millisecond `DateTime64(3)` (e.g. `1782669669` → `1970-01-21`). So a `1970-01-28`-style date only tells you the precision is mismatched — check the column type before deciding which way to convert.
+
+The `enrichEvents` helper emits **seconds** (matches a plain `DateTime`); the CLI's erc20/uniswap transformers emit `getTime()` ms (matches the `DateTime(3)` columns they generate).
 
 ## Struct/Tuple Event Parameters
 

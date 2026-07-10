@@ -1,11 +1,11 @@
 ---
 name: pipes-sdk
-description: Build, configure, deploy, and troubleshoot durable blockchain indexers with the Subsquid Pipes SDK when Portal MCP or curl previews are insufficient for backfills, recurring syncs, joins, app-owned data, or production analytics.
-compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js LTS (v20 or v22) — avoid v25+.
+description: Build, configure, deploy, and troubleshoot durable blockchain indexers with the Subsquid Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) when Portal MCP or curl previews are insufficient for backfills, recurring syncs, joins, app-owned data, or production analytics.
+compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js v22 LTS (@subsquid/pipes requires >=22.15.0) — avoid v25+.
 allowed-tools: [Bash, Read, Write, Edit, Grep]
 metadata:
   author: subsquid
-  version: "1.1.5"
+  version: "1.2.0"
   category: core
 ---
 
@@ -16,14 +16,15 @@ One skill for the full Pipes SDK lifecycle: scaffold new indexers, diagnose runt
 ## When to Use This Skill
 
 Activate when the user wants to:
-- **Create a new indexer** — scaffold EVM, Solana, or Hyperliquid projects
+- **Create a new indexer** — scaffold EVM or Solana projects with the CLI; set up Tron, Bitcoin, or Hyperliquid indexers manually with the SDK
 - **Fix runtime errors** — compilation failures, DB issues, Portal timeouts, decoding errors
 - **Optimize sync performance** — slow indexing, high memory, large ranges
 - **Validate data quality** — NULL checks, gaps, malformed addresses, duplicate events
 - **Deploy an indexer** — local Docker or ClickHouse Cloud
+- **Write to analytics sinks** — ClickHouse, PostgreSQL (Drizzle), BigQuery, Parquet files
 - **Turn a Portal handoff into durable infrastructure** — when a Portal MCP answer or curl export is not enough
 
-Common trigger phrases: *"create a new indexer"*, *"my indexer crashed"*, *"error"*, *"not working"*, *"slow"*, *"optimize"*, *"deploy to ClickHouse Cloud"*, *"track X events on Ethereum/Solana/Hyperliquid"*.
+Common trigger phrases: *"create a new indexer"*, *"my indexer crashed"*, *"error"*, *"not working"*, *"slow"*, *"optimize"*, *"deploy to ClickHouse Cloud"*, *"track X events on Ethereum/Solana/Tron/Bitcoin/Hyperliquid"*.
 
 ## Portal Handoff Workflow
 
@@ -44,18 +45,31 @@ Before scaffolding, say why Pipes is the right surface. Portal MCP is best for b
 
 ## Critical Environment Constraints
 
-**Node.js:** LTS only (v20 or v22). v25.x has zstd decompression bugs that crash during large Portal streams. See [ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md).
+**Node.js:** v22 LTS. `@subsquid/pipes` declares `engines.node >= 22.15.0` (v20 no longer qualifies); v25.x has zstd decompression bugs that crash during large Portal streams. See [ENVIRONMENT_SETUP.md](references/ENVIRONMENT_SETUP.md).
 
 **CLI:** `@subsquid/pipes-cli@1.0.0-alpha.4`. Always use programmatic mode via `--config '{...}'`. **Never create indexer files manually** — that bypasses scaffolding, dependency setup, and configuration.
 
+**npm dist-tags (trap):** a bare `npm install @subsquid/pipes` resolves to the pre-1.0 `0.1.0-beta.17` — a different, older API. Manual (non-CLI) setups must install `@subsquid/pipes@alpha` (CLI-scaffolded projects already pin `"@subsquid/pipes": "alpha"`). Keep the explicit `pipes-cli@1.0.0-alpha.4` pin: the CLI's `@latest` is the *older* alpha.1.
+
 ## Known CLI Quirks
 
-1. **`uniswapV3Swaps` silently drops `factoryAddress`** — after generation, `grep "address:" src/index.ts` — if empty (`['']`), patch manually.
-2. **`Unknown table 'pipes.sync'` on first run** — harmless. SDK creates the table and continues.
+1. **`Unknown table 'pipes.sync'` on first run** — harmless. SDK creates the table and continues.
+
+## Network Coverage
+
+| Network | CLI scaffolding | SDK module |
+|---------|----------------|------------|
+| EVM chains | ✅ `networkType: "evm"` | `@subsquid/pipes/evm` |
+| Solana | ✅ `networkType: "svm"` | `@subsquid/pipes/solana` |
+| Tron | ❌ manual setup | `@subsquid/pipes/tron` — `tronPortalStream`, `tronQuery()` |
+| Bitcoin | ❌ manual setup | `@subsquid/pipes/bitcoin` — `bitcoinPortalStream`, `bitcoinQuery()` |
+| Hyperliquid fills | ❌ manual setup | `@subsquid/pipes/hyperliquid` — `hyperliquidFillsPortalStream` |
+
+Manual setup patterns for Tron, Bitcoin, and Hyperliquid are in [TEMPLATES.md](references/TEMPLATES.md); stream/query APIs in [SDK_FEATURES.md](references/SDK_FEATURES.md).
 
 ## Scaffolding an Indexer
 
-See [TEMPLATES.md](references/TEMPLATES.md) for the full catalog: `erc20Transfers`, `uniswapV3Swaps`, `custom` for EVM; Anchor vs non-Anchor for Solana; manual setup for Hyperliquid.
+See [TEMPLATES.md](references/TEMPLATES.md) for the full catalog: `erc20Transfers`, `uniswapV3Swaps`, `custom` for EVM; `tokenBalances`, `custom` for Solana (`networkType: "svm"`); manual setup for Tron, Bitcoin, and Hyperliquid.
 
 ### Step 0: Research Protocol (MANDATORY)
 
@@ -99,14 +113,8 @@ Template IDs must be camelCase: `uniswapV3Swaps` (not `uniswap-v3-swaps`), `erc2
    ```
    If only `Upgraded`, it's a proxy. Regenerate types from the implementation and update the import in `src/index.ts` — but keep the proxy address in `contracts:`.
 
-2. **Factory address check (uniswapV3Swaps):**
-   ```bash
-   grep "address:" <project>/src/index.ts
-   ```
-   If empty (`['']`), patch: `sed -i '' "s|address: \[''\]|address: ['<FACTORY>']|" <project>/src/index.ts`.
-
-3. **Project-specific database (MANDATORY):**
-   CLI defaults the database to `pipes`. Two indexers sharing `pipes` = sync table conflict (second one resumes from the first's position).
+2. **Project-specific database (MANDATORY):**
+   CLI defaults the database to `pipes`. On `@subsquid/pipes` ≤ alpha.14, two indexers sharing `pipes` collide on the sync cursor (second one resumes from the first's position). alpha.15+ keys the cursor by pipe `id`, but identically named data tables (e.g. two `erc20_transfers`) still collide — keep one database per project.
    ```bash
    DB_NAME=$(basename <project-folder> | tr '-' '_')
    docker exec <container> clickhouse-client --password <pw> \
@@ -114,19 +122,19 @@ Template IDs must be camelCase: `uniswapV3Swaps` (not `uniswap-v3-swaps`), `erc2
    sed -i '' "s/CLICKHOUSE_DATABASE=.*/CLICKHOUSE_DATABASE=$DB_NAME/" <project-folder>/.env
    ```
 
-4. **ClickHouse password matches container:**
+3. **ClickHouse password matches container:**
    ```bash
    grep CLICKHOUSE_PASSWORD <project-folder>/.env
    # For an existing standalone container: match the container's password
    # For the generated docker-compose: "password" is correct
    ```
 
-5. **Contract addresses present (custom template):**
+4. **Contract addresses present (custom template):**
    ```bash
    grep "contracts:" <project>/src/index.ts
    ```
 
-6. **Know your table names (custom template):** one table per event, named `{contractName}_{eventName}` in snake_case. There is no combined table.
+5. **Know your table names (custom template):** one table per event, named `{contractName}_{eventName}` in snake_case. There is no combined table.
 
 ### Step 4: Start and validate
 
@@ -159,7 +167,7 @@ Match the user's symptom to a pattern. Full diagnostics in [TROUBLESHOOTING.md](
 | `Cannot read properties of undefined (reading 'topic')` | Proxy ABI loaded | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-4b-proxy-contract-abi--crash-on-startup) |
 | DB empty after run | Start block / proxy / filter / sync conflict | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-5-missing-data) |
 | Factory indexer: 0 rows for 30–60s | Cold-start from `range.from` forward | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-5b-factory-indexer-shows-zero-data) |
-| Timestamps show 1970 | Milliseconds passed to `DateTime` (seconds) | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-dates) |
+| Timestamps show 1970 | JS value precision doesn't match column precision | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-dates) |
 | `heap out of memory` / killed | Batch too large | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-6-memory-issues) |
 | `Table already exists` / type mismatch | Schema drift | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-7-clickhouse-schema-issues) |
 | `ZSTD_error_prefix_unknown` | Node v25+ zstd bug | [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md#error-pattern-9-nodejs-version-compatibility-issues) |
@@ -177,6 +185,12 @@ The Pipes SDK is feature-rich — a handful of patterns cover 80% of use cases.
 - **Topic0-only filtering**: track events across ALL contracts that emit a specific signature, no address list needed. Best for protocol-unique events — see [PATTERNS.md](references/PATTERNS.md#4-topic0-only-global-filtering).
 - **Multi-output decoders**: run multiple named decoders in one pipeline via `outputs: { transfers: ..., swaps: ... }` — see [PATTERNS.md](references/PATTERNS.md#5-parallel-event-decoding-multi-output).
 - **SDK 1.0 features**: time-based ranges, `defineAbi`, typed errors, testing library — see [SDK_FEATURES.md](references/SDK_FEATURES.md).
+- **Tron & Bitcoin streams**: native query builders and portal streams for `tron-mainnet` and `bitcoin-mainnet` — see [SDK_FEATURES.md](references/SDK_FEATURES.md#tron-portal-streams).
+- **BigQuery & Parquet targets**: `bigqueryTarget` (auto-created partitioned tables, fork-safe DELETEs) and `parquetTarget` (finalized-only rotating files for DuckDB/Spark/Athena) — see [SDK_FEATURES.md](references/SDK_FEATURES.md#target-configuration).
+- **Pipe-id-keyed cursors (alpha.15+)**: targets key sync state by the pipe `id`, so multiple pipes can share one database. Legacy ClickHouse cursors migrate automatically — see [SDK_FEATURES.md](references/SDK_FEATURES.md#cursor-keying--upgrading-to-alpha15).
+- **`evmPortalSource` alias**: CLI-scaffolded `src/index.ts` calls `evmPortalSource(...)`, an exported alias of `evmPortalStream` — same function, no behavioral difference.
+- **Portal response cache**: `portalSqliteCache` (from `@subsquid/pipes/portal-cache/node`) caches Portal stream responses on disk (SQLite + zstd) to speed up re-runs and backfills over the same range; wire it via the stream's `cache` option — see [SDK_FEATURES.md](references/SDK_FEATURES.md).
+- **Observability**: Prometheus metrics via `metricsServer()` (`@subsquid/pipes/metrics/node`, stream `metrics` option) and OpenTelemetry tracing via `opentelemetryProfiler()` (`@subsquid/pipes/opentelemetry`, stream `profiler` option) — see [SDK_FEATURES.md](references/SDK_FEATURES.md).
 
 ### DeFi Protocol Forks
 
@@ -249,4 +263,4 @@ Dashboard-grade ClickHouse patterns (time bucketing, conditional aggregation, pa
 
 ## Related
 
-- **portal** — query blockchain data across 225+ chains via Portal MCP or the SQD Portal Stream API. Use it to verify contract events, discover dataset names, cross-check indexed data, and decide when a query should become a Pipes/Squid pipeline.
+- **portal** — query blockchain data across 230+ chains via Portal MCP or the SQD Portal Stream API. Use it to verify contract events, discover dataset names, cross-check indexed data, and decide when a query should become a Pipes/Squid pipeline.

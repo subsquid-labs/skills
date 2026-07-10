@@ -438,7 +438,9 @@ Hyperliquid timestamps work differently from EVM indexers:
 - The recommended pattern is `new Date(block.header.timestamp).toISOString()` which produces strings like `"2026-03-17T12:00:00.000Z"`
 - ClickHouse accepts these ISO strings when configured with `date_time_input_format: 'best_effort'` and a `DateTime64(3, 'UTC')` column
 
-**You do NOT need to divide by 1000** like EVM indexers do — the ISO string approach handles it. The "divide by 1000" guidance in the main SKILL.md applies to EVM's `d.timestamp.getTime()` pattern, not Hyperliquid's ISO string pattern.
+**Do NOT divide by 1000** here — the ISO string approach already carries millisecond precision, and `DateTime64(3, 'UTC')` expects it. Epoch seconds in a `DateTime64(3)` column land in 1970.
+
+For EVM indexers the divisor is not a fixed rule either: it depends on the ClickHouse column precision. See [SCHEMA_GUIDE.md](SCHEMA_GUIDE.md#timestamp-handling) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-dates).
 
 ## Common Gotchas
 
