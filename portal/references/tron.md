@@ -391,10 +391,12 @@ console.log(hex.slice(0, -8));  // strip 4-byte checksum
 ### Mistake 1: `0x`-Prefixed Hex
 
 ```json
-{"logs": [{"address": ["0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c"]}]}  // ❌ no results
-{"logs": [{"address": ["41a614f803b6fd780986a42c78ec9c7f77e6ded13c"]}]}    // ✅
+{"logs": [{"address": ["0xa614f803b6fd780986a42c78ec9c7f77e6ded13c"]}]}  // ❌ no results
+{"logs": [{"address": ["a614f803b6fd780986a42c78ec9c7f77e6ded13c"]}]}    // ✅
 ```
 Tron hex is always bare — in filters and in responses.
+
+> Both lines use the 20-byte log form. Dropping the `0x` is necessary but not sufficient: a bare `41…` address in a log filter also returns nothing (see Mistake 2b).
 
 ### Mistake 2: Base58 Addresses in Filters
 
