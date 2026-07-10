@@ -152,16 +152,23 @@ See [ABI_GUIDE.md](ABI_GUIDE.md) for the full proxy handling guide, including no
 
 ## Error Pattern 5c: Timestamps Show 1970 Dates
 
-**Symptoms:** All dates in ClickHouse show as `1970-01-28` or similar.
+**Symptoms:** All dates in ClickHouse show as `1970-01-28`, `1970-01-21`, or similar.
 
-**Diagnosis:** Passing milliseconds to a `DateTime` column (expects seconds).
-
-**Fix:** Divide `getTime()` by 1000 in your `.pipe()` transform:
-```typescript
-timestamp: Math.floor(d.timestamp.getTime() / 1000)  // ✓
+**Diagnosis:** The JS value's precision doesn't match the column's — and this fails in **both** directions, so "1970" alone doesn't tell you which way. Check the column type first:
+```bash
+docker exec clickhouse clickhouse-client --password <pw> \
+  --query "DESCRIBE TABLE <db>.<table>" | grep timestamp
 ```
+ClickHouse parses `DateTime(3)` as `DateTime64(3)` (millisecond precision). A **seconds** value in that column lands in 1970 just as badly as a **milliseconds** value in a plain `DateTime` (verified: `1782669669` → `1970-01-21`).
 
-The auto-generated `enrichEvents` helper handles this correctly — this only happens with manual `.pipe()` transforms.
+**Fix:** Match the JS value to the column precision:
+
+| Column type | Precision | Correct JS value |
+|-------------|-----------|------------------|
+| `DateTime` | seconds | `Math.floor(d.timestamp.getTime() / 1000)` |
+| `DateTime(3)` / `DateTime64(3)` | milliseconds | `d.timestamp.getTime()` (do **not** divide) |
+
+CLI-generated tables use `timestamp DateTime(3)`, so the scaffold's transformers correctly emit undivided `getTime()` — do **not** "fix" them by dividing. The `enrichEvents` helper (custom templates only) emits seconds, matching a plain `DateTime` column.
 
 **Recovery:** Drop tables + sync, delete SQLite (if factory), restart.
 

@@ -75,13 +75,34 @@ Consult this documentation when you need to:
 - Write to custom format/storage
 - **Use when**: JSON files, S3, custom database
 
-#### 9. Memory Target with Finalized/Unfinalized Tracking
+#### 9. Memory Target (internal / testing only)
 - In-memory storage with rollback handling
-- **Use when**: Testing, small datasets, real-time UI
+- **Not publicly importable**: `createMemoryTarget` exists in the SDK source but is **not** exported from the published `@subsquid/pipes@alpha` (alpha.16) package — there is no `./targets/memory` export and it is not re-exported from the root index, so application code cannot import it. (The CLI's `memory` sink separately throws `"Memory sink is not supported"`.)
+- **Use when**: SDK-internal tests only — for a lightweight external option, use a custom target instead
 
 #### 10. RPC Latency Monitoring
-- Compare Portal vs RPC performance
-- **Use when**: Monitoring infrastructure
+- Compare Portal vs RPC block-arrival latency by feeding a latency watcher into a stream's `outputs`
+- **API**: `evmRpcLatencyWatcher({ rpcUrl: string[] })` (from `@subsquid/pipes/evm`) and `bitcoinRpcLatencyWatcher({ rpcUrl, intervalMs? })` (from `@subsquid/pipes/bitcoin`), plus a Solana watcher — all wrap the generic `rpcLatencyWatcher({ watcher })`. Each emitted `LatencySample` carries `{ url, receivedAt, portalDelayMs }` and the RPC block hash.
+- **Use when**: Monitoring infrastructure, measuring Portal head lag against your own RPC providers
+
+```typescript
+import { evmPortalStream, evmRpcLatencyWatcher } from '@subsquid/pipes/evm'
+
+const stream = evmPortalStream({
+  id: 'indexing-latency',
+  portal: 'https://portal.sqd.dev/datasets/base-mainnet',
+  outputs: evmRpcLatencyWatcher({
+    rpcUrl: ['https://base.drpc.org', 'https://base-rpc.publicnode.com'],
+  }),
+})
+
+for await (const { data } of stream) {
+  if (!data) continue
+  console.table(data.rpc) // [{ url, receivedAt, portalDelayMs }]
+}
+```
+
+Bitcoin uses the same shape with `bitcoinRpcLatencyWatcher` (polls Bitcoin Core JSON-RPC, no WebSocket) from `@subsquid/pipes/bitcoin`.
 
 ## Critical Error Patterns
 
@@ -449,18 +470,22 @@ CREATE VIEW weth_events AS
 
 **Symptoms**: All timestamps in ClickHouse display as `1970-01-28` or similar early dates, even though the indexer is processing recent blocks.
 
-**Cause**: ClickHouse `DateTime` column expects **seconds** since epoch, but `d.timestamp.getTime()` in JavaScript returns **milliseconds**. If you pass milliseconds directly, ClickHouse interprets them as seconds and produces dates in 1970.
+**Cause**: The JS value's precision doesn't match the ClickHouse column's. The divisor depends on the **column type**, not a blanket rule:
+- `DateTime` (no precision arg) stores **seconds** → feed `Math.floor(getTime()/1000)`. Passing raw ms (`getTime()`) lands in 1970.
+- `DateTime(3)` / `DateTime64(3)` stores **milliseconds** (ClickHouse parses `DateTime(3)` as `DateTime64(3)`) → feed `getTime()` undivided. Passing seconds here **also** lands in 1970 (e.g. `1782669669` → `1970-01-21`).
 
-**Solution**: Divide by 1000 in your `.pipe()` transform:
+Because **both** mismatches produce ~1970 dates, "1970" alone doesn't tell you which direction is wrong — check the column type first with `DESCRIBE TABLE`.
+
+**Solution**: Match the JS value to the column precision:
 ```typescript
-// WRONG
-timestamp: d.timestamp.getTime(),  // milliseconds → 1970 dates
+// Column: DateTime  (seconds)
+timestamp: Math.floor(d.timestamp.getTime() / 1000),
 
-// CORRECT
-timestamp: Math.floor(d.timestamp.getTime() / 1000),  // seconds → correct dates
+// Column: DateTime(3) / DateTime64(3)  (milliseconds) — the CLI default scaffold
+timestamp: d.timestamp.getTime(),  // do NOT divide
 ```
 
-**Note**: The auto-generated `enrichEvents` helper handles this correctly. This bug only appears when writing **manual** `.pipe()` transforms (e.g., to access factory metadata).
+**Note**: CLI-generated tables use `timestamp DateTime(3)` and the generated erc20/uniswap transformers emit `getTime()` (ms, undivided) — so blanket-dividing by 1000 breaks the default scaffold. The `enrichEvents` helper (used only by the `custom` templates) emits **seconds**, matching a plain `DateTime` column.
 
 **Recovery**: If you've already inserted bad timestamps:
 ```bash
@@ -575,12 +600,15 @@ sqlite3 <project>/*.sqlite "SELECT COUNT(*) FROM factory_contracts" 2>/dev/null 
 - PostgreSQL (use drizzleTarget)
 
 ### Memory Target
+**Not publicly importable in alpha.16** (SDK-internal / testing only — see pattern #9). For a lightweight external store, use a custom target. Characteristics of the internal target:
+
 **Use when**:
-- Testing/development
+- SDK-internal testing
 - Small datasets (< 10M records)
 - No persistence needed
 
 **DON'T use when**:
+- Application code (it cannot be imported)
 - Large datasets
 - Need persistence across restarts
 

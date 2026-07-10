@@ -8,8 +8,8 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 | Skill | Use Case |
 |-------|----------|
-| [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot durable blockchain indexers with the Pipes SDK (EVM, Solana, Hyperliquid) |
-| [**portal**](./portal/) | Query blockchain data across 225+ chains and choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid |
+| [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot durable blockchain indexers with the Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) |
+| [**portal**](./portal/) | Query blockchain data across 230+ datasets (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) and choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid |
 | [**migrate-to-portal**](./squid-sdk/migrate-to-portal/) | Migrate an existing Squid SDK indexer (EVM or Solana) off the v2 gateway onto Portal |
 | [**squid-perf**](./squid-sdk/squid-perf/) | Compare indexer sync-time performance across runs |
 
@@ -52,6 +52,12 @@ What's the correct Portal dataset name for Arbitrum?
 ```
 ```
 Show me the last 200 BTC perp fills on Hyperliquid
+```
+```
+Track USDT transfers on Tron
+```
+```
+Find all Bitcoin payments to this address in the last month
 ```
 ```
 Give me a curl command that exports raw Base USDC transfers as NDJSON
