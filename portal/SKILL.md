@@ -1,23 +1,23 @@
 ---
 name: portal
-description: Query blockchain data across 225+ chains with SQD Portal, and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines.
+description: Query blockchain data across 230+ datasets with SQD Portal — EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid — and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines.
 allowed-tools: [Bash, WebFetch, WebSearch]
 metadata:
   author: subsquid
-  version: "1.1.5"
+  version: "1.2.0"
   category: portal-core
 ---
 
 # Portal
 
-Query and analyze blockchain data across 225+ chains using SQD Portal. Use this skill to decide whether the job belongs in SQD Portal MCP tools, a raw Portal Stream API/curl request, or a durable Pipes/Squid indexer.
+Query and analyze blockchain data across 230+ datasets using SQD Portal. Use this skill to decide whether the job belongs in SQD Portal MCP tools, a raw Portal Stream API/curl request, or a durable Pipes/Squid indexer.
 
 This skill should not be treated as a static copy of the MCP tool catalog. When the SQD Portal MCP server is available, read `sqd://tools` for the current grouped tool guide and `sqd://tools/{tool_name}` for exact per-tool guidance.
 
 ## When to Use This Skill
 
 Use this skill when you need to:
-- Query blockchain event logs, transactions, traces, instructions, Substrate events/calls, or trade fills
+- Query blockchain event logs, transactions, traces, instructions, Substrate events/calls, Bitcoin UTXOs, Tron transfers, or trade fills
 - Find the correct Portal dataset name for a blockchain
 - Analyze on-chain activity (token transfers, DeFi events, contract deployments, trading)
 - Choose between Portal MCP tools, raw Portal Stream API/curl, or a durable Pipes/Squid indexer
@@ -71,10 +71,15 @@ Default order:
 | Moonbeam (Substrate) | `moonbeam-substrate` | Substrate |
 | Solana | `solana-mainnet` | Solana |
 | Bitcoin | `bitcoin-mainnet` | Bitcoin |
+| Tron | `tron-mainnet` | Tron |
 | Hyperliquid Fills | `hyperliquid-fills` | HyperliquidFills |
 | HyperEVM | `hyperliquid-mainnet` | EVM |
+| Monad | `monad-mainnet` | EVM |
+| MegaETH | `megaeth-mainnet` | EVM |
+| Plasma | `plasma-mainnet` | EVM |
+| Unichain | `unichain-mainnet` | EVM |
 
-> **Full mapping:** See `references/dataset-mapping.md` for all 200+ chains including L2s, alt-L1s, and testnets.
+> **Full mapping:** See `references/dataset-mapping.md` for all 230+ datasets including L2s, alt-L1s, and testnets, plus the real-time dataset list.
 
 ### Common Mistakes
 
@@ -107,6 +112,7 @@ If the user names a token, contract, protocol, pool, or Hyperliquid coin, resolv
 | Solana program calls, SPL transfers | **Solana Instructions** | `references/solana.md` | `"type": "solana"` |
 | Polkadot/Kusama events, calls, staking | **Substrate** | `references/substrate.md` | `"type": "substrate"` |
 | Bitcoin transactions, UTXOs, addresses | **Bitcoin** | `references/bitcoin.md` | `"type": "bitcoin"` |
+| Tron TRC-20 logs, TRX/TRC-10 transfers, contract calls | **Tron** | `references/tron.md` | `"type": "tron"` |
 | Hyperliquid perpetual fills | **Hyperliquid Fills** | `references/hyperliquid.md` | `"type": "hyperliquidFills"` |
 
 **Each reference file contains:** query structure, filter fields, indexing status, examples, and data-type-specific gotchas.
@@ -127,7 +133,7 @@ Accept: application/x-ndjson
 
 ```json
 {
-  "type": "<evm|solana|substrate|bitcoin|hyperliquidFills>",
+  "type": "<evm|solana|substrate|bitcoin|tron|hyperliquidFills>",
   "fromBlock": <start-block>,
   "toBlock": <end-block>,
   "<data-key>": [{ <filters> }],
@@ -148,7 +154,12 @@ Accept: application/x-ndjson
 | Bitcoin Transactions | `"transactions"` | `"transaction"` |
 | Bitcoin Inputs | `"inputs"` | `"input"` |
 | Bitcoin Outputs | `"outputs"` | `"output"` |
+| Tron Logs | `"logs"` | `"log"` |
+| Tron Transactions | `"transactions"` | `"transaction"` |
+| Tron Internal Txs | `"internalTransactions"` | `"internalTransaction"` |
 | Hyperliquid Fills | `"fills"` | `"fill"` |
+
+> Tron also has dedicated request keys for native TRX transfers (`"transferTransactions"`), TRC-10 (`"transferAssetTransactions"`), and contract calls (`"triggerSmartContractTransactions"`) — see `references/tron.md`.
 
 ### Quick Examples
 
@@ -191,12 +202,25 @@ Dataset: `polkadot`
 ```json
 {
   "type": "bitcoin",
-  "fromBlock": 942000, "toBlock": 942100,
+  "fromBlock": 940000, "toBlock": 940110,
   "outputs": [{"scriptPubKeyAddress": ["bc1qxhmdufsvnuaaaer4ynz88fspdsxq2h9e9cetdj"], "transaction": true}],
   "fields": {"block": {"number": true, "timestamp": true}, "transaction": {"txid": true}, "output": {"value": true, "scriptPubKeyAddress": true}}
 }
 ```
 Dataset: `bitcoin-mainnet`
+
+**Tron: USDT (TRC-20) Transfers**
+```json
+{
+  "type": "tron",
+  "fromBlock": 84000000, "toBlock": 84000010,
+  "logs": [{"address": ["a614f803b6fd780986a42c78ec9c7f77e6ded13c"], "topic0": ["ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"], "transaction": true}],
+  "fields": {"block": {"number": true, "timestamp": true}, "log": {"address": true, "topics": true, "data": true, "transactionIndex": true}, "transaction": {"hash": true, "transactionIndex": true}}
+}
+```
+Dataset: `tron-mainnet`
+
+> **Tron gotchas:** all hex is bare (no `0x`); transaction-level addresses are 21-byte `41…` hex, but **log addresses use the 20-byte form without `41`** (never base58 `T…`); timestamps are **milliseconds**. See `references/tron.md`.
 
 **Hyperliquid: BTC Fills**
 ```json
@@ -222,7 +246,7 @@ GET https://portal.sqd.dev/datasets/{dataset}/timestamps/{unix-seconds}/block
 → {"block_number": 25043068}
 ```
 
-**Works for both archived AND real-time data** — resolve timestamps from minutes ago, not just historical ranges. Available on every dataset (EVM, Solana, Substrate, Bitcoin, Hyperliquid).
+**Works for both archived AND real-time data** — resolve timestamps from minutes ago, not just historical ranges. Available on every dataset (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid).
 
 ### Example: "USDC transfers on Base in the last 4 hours"
 
@@ -251,6 +275,11 @@ TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
 If Portal MCP tools are available, prefer them for bounded interactive work. The current Portal MCP server exposes 25 public tools plus 3 advanced/debug tools. Legacy aliases are not exposed. Public query params use `network`; discovery filters use `vm`.
 
 Use `sqd://tools` or HTTP `/tools` when available for the live catalog. The table below is a compact orientation, not the source of truth.
+
+Current hosted-server behaviors worth relying on:
+- **Unified response envelope** — every tool returns the same contract keys (`answer`, `display`, `next_steps`, `investigation`, `_freshness`, `_pagination`, `_coverage`, `_ordering`, `_execution`, `_tool_contract`); read these to judge completeness and next pivots.
+- **Natural-language time windows** — time-based tools accept human ranges (`"last hour"`, `"past 30 minutes"`, `"30 minutes ago"`) directly, so you can pass a time range instead of resolving blocks yourself.
+- **`token_symbols` inputs** — `portal_evm_query_logs` / `portal_evm_query_token_transfers` accept `token_symbols`, and `portal_evm_query_transactions` accepts `from_token_symbols` / `to_token_symbols` (token-list backed).
 
 ### Discovery & Overview
 
@@ -305,8 +334,12 @@ Use `sqd://tools` or HTTP `/tools` when available for the live catalog. The tabl
 
 | Tool | Use Case |
 |------|----------|
-| `portal_bitcoin_query_transactions` | Bitcoin transactions with input/output filters |
-| `portal_bitcoin_get_analytics` | Aggregate Bitcoin metrics |
+| `portal_bitcoin_query_transactions` | Raw Bitcoin txs by block/time range; optionally attach inputs & outputs inline (`include_inputs`/`include_outputs`). No address/type filtering — use the Stream API for that |
+| `portal_bitcoin_get_analytics` | Bitcoin network snapshot: block cadence, fees, SegWit/Taproot adoption, unique-address activity |
+
+### Tron Queries
+
+No Tron-specific MCP tools yet. Dataset-agnostic tools (`portal_list_networks`, `portal_get_network_info`, `portal_get_head`, `portal_debug_resolve_time_to_block`) accept `tron-mainnet`; for Tron data queries use the raw Portal Stream API with `"type": "tron"` — see `references/tron.md`.
 
 ### Cross-Chain Analytics
 
@@ -389,6 +422,7 @@ Every query MUST include `type`.
 - Solana → `"type": "solana"`
 - Substrate chains (Polkadot, Kusama, parachains) → `"type": "substrate"` (NOT `"evm"`)
 - Bitcoin → `"type": "bitcoin"` (NOT `"evm"`)
+- Tron (`tron-mainnet`) → `"type": "tron"` (bare hex — no `0x`; `41…` addresses; ms timestamps)
 - Hyperliquid fills → `"type": "hyperliquidFills"`
 - HyperEVM (`hyperliquid-mainnet`) → `"type": "evm"` (NOT `"hyperliquidFills"`)
 - Frontier parachains (`moonbeam-substrate`) → `"type": "substrate"` (NOT `"evm"`; use `evmLogs` filter)
@@ -421,6 +455,7 @@ Always add address/topic/programId filters and reasonable block ranges.
 - **[Solana OpenAPI Schema](https://docs.sqd.dev/en/ai/solana-openapi)** — Solana API specification
 - **[Substrate OpenAPI Schema](https://docs.sqd.dev/en/ai/substrate-openapi)** — Substrate API specification
 - **[Bitcoin OpenAPI Schema](https://docs.sqd.dev/en/ai/bitcoin-openapi)** — Bitcoin API specification
+- **[Tron OpenAPI Schema](https://docs.sqd.dev/en/ai/tron-openapi)** — Tron API specification
 - **[Hyperliquid Fills OpenAPI](https://docs.sqd.dev/en/ai/hyperliquid-openapi)** — Hyperliquid API specification
 - **Event Signature Calculator:** https://www.4byte.directory/
 - **Function Selector Database:** https://www.4byte.directory/
