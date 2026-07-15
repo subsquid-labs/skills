@@ -1,7 +1,10 @@
 ---
 name: portal
-description: Query blockchain data across 230+ datasets with SQD Portal — EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid — and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines.
-allowed-tools: [Bash, WebFetch, WebSearch]
+description: "Query blockchain data across 230+ datasets with SQD Portal — EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid — and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines."
+allowed-tools:
+  - Bash
+  - WebFetch
+  - WebSearch
 metadata:
   author: subsquid
   version: "1.2.0"

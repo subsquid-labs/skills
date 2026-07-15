@@ -2,7 +2,12 @@
 name: pipes-sdk
 description: Build, configure, deploy, and troubleshoot durable blockchain indexers with the Subsquid Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) when Portal MCP or curl previews are insufficient for backfills, recurring syncs, joins, app-owned data, or production analytics.
 compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js v22 LTS (@subsquid/pipes requires >=22.15.0) — avoid v25+.
-allowed-tools: [Bash, Read, Write, Edit, Grep]
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
 metadata:
   author: subsquid
   version: "1.2.0"
