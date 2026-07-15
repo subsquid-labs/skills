@@ -51,7 +51,7 @@ Query all USDC transfers on Base between blocks 10M–11M
 What's the correct Portal dataset name for Arbitrum?
 ```
 ```
-Show me the last 200 BTC perp fills on Hyperliquid
+Show me up to 200 BTC perp fills on Hyperliquid from the past hour
 ```
 ```
 Track USDT transfers on Tron
