@@ -1,0 +1,26 @@
+name: Notify plugin skill sync
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch plugin skill sync
+        env:
+          GH_TOKEN: ${{ secrets.PORTAL_MCP_SERVER_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Configure PORTAL_MCP_SERVER_DISPATCH_TOKEN with Contents: write access to subsquid-labs/portal-mcp-server."
+            exit 1
+          fi
+
+          gh api --method POST repos/subsquid-labs/portal-mcp-server/dispatches \
+            -f event_type=skills-updated \
+            -f "client_payload[skills_sha]=$GITHUB_SHA"

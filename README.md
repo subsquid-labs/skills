@@ -85,6 +85,11 @@ Why is my indexer syncing slowly?
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on adding or editing skills.
 
+Every push to `main` dispatches the plugin bundle sync in
+[`subsquid-labs/portal-mcp-server`](https://github.com/subsquid-labs/portal-mcp-server). Repository
+maintainers must configure the `PORTAL_MCP_SERVER_DISPATCH_TOKEN` Actions secret with a
+fine-grained token that has **Contents: write** permission on that repository.
+
 ## License
 
 MIT
