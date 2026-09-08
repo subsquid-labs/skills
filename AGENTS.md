@@ -77,7 +77,9 @@ metadata:
 
 Only the skill name and description load at agent startup. The full `SKILL.md` loads into context when the skill is activated.
 
-- **Keep SKILL.md under 500 lines** — put detail in `references/`.
+- **Keep discovery concise.** Use a short capability statement and a discriminating trigger; avoid keyword inventories or universal activation.
+- **Route conditional detail.** Keep essential constraints in `SKILL.md`; place chain-specific procedures, schemas, and substantial examples in references loaded only when needed. A line limit is an upper bound, not a target.
+- **Preserve the requested outcome.** Do not add a mandatory interview or approval stage to a scoped implementation. Ask only when missing information materially changes the outcome or the next action requires unresolved authority.
 - **Write specific descriptions** — the agent decides when to activate based on this line.
 - **Progressive disclosure** — link to reference files that get read only when needed.
 - **File references work one level deep** — link directly from SKILL.md to `references/*.md`.
