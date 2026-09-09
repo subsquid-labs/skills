@@ -1,5 +1,7 @@
 # ClickHouse Analytics Query Patterns
 
+For database commands and configuration, use [CREDENTIALS.md](CREDENTIALS.md): inject secrets through the environment or protected client files, and never print them or pass their values as command arguments.
+
 Query patterns for building real-time dashboards on top of ClickHouse tables populated by Pipes SDK indexers. Covers time bucketing, conditional aggregation, parameterized queries, and performance.
 
 ## CollapsingMergeTree Basics
@@ -258,7 +260,7 @@ import { createClient } from '@clickhouse/client'
 const client = createClient({
   url: process.env.CLICKHOUSE_URL || 'http://localhost:8123',
   database: process.env.CLICKHOUSE_DB || 'my_dashboard',
-  password: process.env.CLICKHOUSE_PASSWORD || 'default',
+  password: process.env.CLICKHOUSE_PASSWORD,
   clickhouse_settings: {
     date_time_output_format: 'iso',  // returns ISO strings, not Unix timestamps
   },

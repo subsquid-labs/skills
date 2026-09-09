@@ -1,5 +1,7 @@
 # Environment Setup Guide
 
+For database commands and configuration, use [CREDENTIALS.md](CREDENTIALS.md): inject secrets through the environment or protected client files, and never print them or pass their values as command arguments.
+
 Verify your development environment is correctly configured for building Subsquid Pipes indexers.
 
 ## Overview
@@ -42,8 +44,7 @@ node --version
 
 **Option B - Using nvm (Recommended)**:
 ```bash
-# Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+# Use an existing nvm installation; otherwise use the direct installer or Homebrew above/below.
 
 # Install Node.js 22 LTS (recommended)
 nvm install 22
@@ -81,10 +82,7 @@ pnpx --version
 bun --version
 ```
 
-**Install bun** (optional but faster):
-```bash
-curl -fsSL https://bun.sh/install | bash
-```
+**Install bun** (optional): use its official package-manager instructions at https://bun.sh/docs/installation. Do not pipe a downloaded script into a shell.
 
 **Note**: npm comes with Node.js. Install pnpm with Corepack or the official pnpm installer before running `pnpx @subsquid/pipes-cli@...` commands.
 
@@ -109,9 +107,8 @@ docker ps
 
 **Linux**:
 ```bash
-# Ubuntu/Debian
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+# First install Docker Engine from the official signed package repository
+# for your distribution: https://docs.docker.com/engine/install/
 
 # Start Docker
 sudo systemctl start docker
@@ -134,19 +131,19 @@ sudo usermod -aG docker $USER
 docker ps | grep clickhouse
 ```
 
-**Start ClickHouse**:
+**Start ClickHouse** (first inject and export `CLICKHOUSE_PASSWORD` as described in [CREDENTIALS.md](CREDENTIALS.md)):
 ```bash
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
 docker run -d \
   --name clickhouse \
-  -p 8123:8123 \
-  -e CLICKHOUSE_PASSWORD=default \
+  -p 127.0.0.1:8123:8123 \
+  -e CLICKHOUSE_PASSWORD \
   clickhouse/clickhouse-server
 ```
 
 **Verify connection**:
 ```bash
 docker exec clickhouse clickhouse-client \
-  --password=default \
   --query "SELECT 1"
 ```
 
@@ -161,12 +158,13 @@ docker exec clickhouse clickhouse-client \
 docker ps | grep postgres
 ```
 
-**Start PostgreSQL**:
+**Start PostgreSQL** (first inject and export `POSTGRES_PASSWORD` through the secret provider):
 ```bash
+: "${POSTGRES_PASSWORD:?Configure the database secret first}"
 docker run -d \
   --name postgres \
-  -p 5432:5432 \
-  -e POSTGRES_PASSWORD=postgres \
+  -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_PASSWORD \
   postgres:16
 ```
 
@@ -251,8 +249,8 @@ ls -l src/contracts/
 # Check for .env file
 ls -la .env
 
-# Example .env content
-cat .env
+# List variable names only; do not display values
+sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=<redacted>/p' .env
 ```
 
 **Expected .env**:
@@ -260,7 +258,7 @@ cat .env
 CLICKHOUSE_URL=http://localhost:8123
 CLICKHOUSE_DATABASE=pipes
 CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=default
+CLICKHOUSE_PASSWORD=<provided-by-secret-manager>
 ```
 
 ### 4. Build Test
@@ -424,7 +422,8 @@ docker ps
 docker stop <container-id>
 
 # Option B: Use different port
-docker run -d --name clickhouse -p 8124:8123 clickhouse/clickhouse-server
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
+docker run -d --name clickhouse -p 127.0.0.1:8124:8123 -e CLICKHOUSE_PASSWORD clickhouse/clickhouse-server
 # Update CLICKHOUSE_URL to http://localhost:8124
 ```
 
@@ -471,10 +470,11 @@ docker logs clickhouse
 docker rm -f clickhouse
 
 # Start fresh
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
 docker run -d \
   --name clickhouse \
-  -p 8123:8123 \
-  -e CLICKHOUSE_PASSWORD=default \
+  -p 127.0.0.1:8123:8123 \
+  -e CLICKHOUSE_PASSWORD \
   clickhouse/clickhouse-server
 
 # Wait a few seconds
@@ -510,8 +510,9 @@ Once environment is verified:
 # Download from docker.com
 
 # 3. Start ClickHouse
-docker run -d --name clickhouse -p 8123:8123 \
-  -e CLICKHOUSE_PASSWORD=default clickhouse/clickhouse-server
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
+docker run -d --name clickhouse -p 127.0.0.1:8123:8123 \
+  -e CLICKHOUSE_PASSWORD clickhouse/clickhouse-server
 
 # 4. Verify
 node --version

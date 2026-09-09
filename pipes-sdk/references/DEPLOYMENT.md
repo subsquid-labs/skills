@@ -1,5 +1,7 @@
 # Pipes: Deploy
 
+For database commands and configuration, use [CREDENTIALS.md](CREDENTIALS.md): inject secrets through the environment or protected client files, and never print them or pass their values as command arguments.
+
 Deploy Subsquid Pipes indexers to ClickHouse — locally via Docker for development and testing, or to ClickHouse Cloud for production.
 
 ---
@@ -15,12 +17,13 @@ For development and testing. Uses a local ClickHouse container.
 docker ps | grep clickhouse
 
 # If none exists, create one:
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
 docker run -d \
   --name clickhouse \
-  -p 8123:8123 \
-  -p 9000:9000 \
+  -p 127.0.0.1:8123:8123 \
+  -p 127.0.0.1:9000:9000 \
   -v clickhouse-data:/var/lib/clickhouse \
-  -e CLICKHOUSE_PASSWORD=default \
+  -e CLICKHOUSE_PASSWORD \
   -e CLICKHOUSE_USER=default \
   clickhouse/clickhouse-server:latest
 ```
@@ -78,13 +81,14 @@ EOF
 
 **Mount the config when creating the container:**
 ```bash
+: "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
 docker run -d \
   --name clickhouse \
-  -p 8123:8123 \
-  -p 9000:9000 \
+  -p 127.0.0.1:8123:8123 \
+  -p 127.0.0.1:9000:9000 \
   -v clickhouse-data:/var/lib/clickhouse \
   -v $(pwd)/clickhouse-config/cors.xml:/etc/clickhouse-server/config.d/cors.xml \
-  -e CLICKHOUSE_PASSWORD=default \
+  -e CLICKHOUSE_PASSWORD \
   -e CLICKHOUSE_USER=default \
   clickhouse/clickhouse-server:latest
 ```
@@ -109,20 +113,16 @@ docker restart clickhouse
 EXISTING=$(docker ps --filter "name=clickhouse" --format "{{.Names}}" | head -n 1)
 
 if [ -z "$EXISTING" ]; then
+  : "${CLICKHOUSE_PASSWORD:?Configure the database secret first}"
   docker run -d \
     --name clickhouse \
-    -p 8123:8123 -p 9000:9000 \
-    -e CLICKHOUSE_PASSWORD=default \
+    -p 127.0.0.1:8123:8123 -p 127.0.0.1:9000:9000 \
+    -e CLICKHOUSE_PASSWORD \
     -e CLICKHOUSE_USER=default \
     clickhouse/clickhouse-server:latest
   CONTAINER_NAME="clickhouse"
-  CLICKHOUSE_PASSWORD="default"
 else
   CONTAINER_NAME=$EXISTING
-  CLICKHOUSE_PASSWORD=$(docker inspect $CONTAINER_NAME | \
-    grep -A 10 "Env" | grep CLICKHOUSE_PASSWORD | \
-    cut -d'=' -f2 | tr -d '",')
-  CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-default}
 fi
 ```
 
@@ -130,7 +130,6 @@ fi
 
 ```bash
 docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --query "SELECT 1"
 # Expected output: 1
 ```
@@ -139,7 +138,6 @@ docker exec $CONTAINER_NAME clickhouse-client \
 
 ```bash
 docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --query "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME"
 ```
 
@@ -147,10 +145,8 @@ docker exec $CONTAINER_NAME clickhouse-client \
 
 ```bash
 docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --query "SELECT id, current, finalized FROM $DATABASE_NAME.sync"
 docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --query "ALTER TABLE $DATABASE_NAME.sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1"
 ```
 
@@ -163,12 +159,10 @@ CLICKHOUSE_USER=default
 CLICKHOUSE_PASSWORD=<password>
 ```
 
-**Password Convention Warning:**
-- The CLI-generated `docker-compose.yml` and `.env` both use `password`
-- Standalone `docker run` commands (in this doc and ENVIRONMENT_SETUP.md) use `default`
-- If using the generated `docker-compose.yml`, keep `password` — it is internally consistent
-- If connecting to an existing standalone container, check: `docker inspect <container> | grep CLICKHOUSE_PASSWORD`
-- Mismatched passwords cause: `ClickHouseError: Authentication failed: password is incorrect`
+Use the same injected secret for the indexer and container, following
+[CREDENTIALS.md](CREDENTIALS.md). Replace generated demo passwords before shared
+or hosted use. Validate authentication with `SELECT 1`; do not print `.env` or
+container secrets to compare values.
 
 **Step 6: Start indexer**
 
@@ -188,7 +182,6 @@ Check the first log line:
 sleep 30
 
 ROW_COUNT=$(docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --database "$DATABASE_NAME" \
   --query "SELECT COUNT(*) FROM $MAIN_TABLE")
 
@@ -200,23 +193,16 @@ Sample data:
 
 ```bash
 docker exec $CONTAINER_NAME clickhouse-client \
-  --password "$CLICKHOUSE_PASSWORD" \
   --database "$DATABASE_NAME" \
   --query "SELECT * FROM $MAIN_TABLE LIMIT 3 FORMAT Vertical"
 ```
 
 ### MCP Setup (Local)
 
-```bash
-claude mcp add -t stdio \
-  -e CLICKHOUSE_HOST=localhost \
-  -e CLICKHOUSE_PORT=8123 \
-  -e CLICKHOUSE_USER=default \
-  -e CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD" \
-  -e CLICKHOUSE_SECURE=false \
-  -e CLICKHOUSE_DATABASE="$DATABASE_NAME" \
-  -- clickhouse /path/to/.local/bin/mcp-clickhouse
-```
+Use the client's supported secret store or launch-time environment injection as
+outlined in [CREDENTIALS.md](CREDENTIALS.md#mcp-and-hosted-applications). Configure
+host `localhost`, port `8123`, the intended database, and the database user as
+non-secret settings. Keep the password in the secret provider.
 
 ### Local Deployment Summary Template
 
@@ -233,7 +219,7 @@ claude mcp add -t stdio \
 
 ## Commands
 tail -f $PROJECT_PATH/indexer.log
-docker exec $CONTAINER_NAME clickhouse-client --password "$CLICKHOUSE_PASSWORD" \
+docker exec $CONTAINER_NAME clickhouse-client \
   --database "$DATABASE_NAME" \
   --query "SELECT COUNT(*) as events, MAX(block_number) as block FROM $MAIN_TABLE"
 kill $INDEXER_PID
@@ -251,7 +237,7 @@ For production deployments using [ClickHouse Cloud](https://clickhouse.cloud/).
 SERVICE_URL:   https://[service-id].[region].aws.clickhouse.cloud:8443
 DATABASE_NAME: [e.g., "pipes"]
 USERNAME:      default
-PASSWORD:      [actual cloud password — NOT "default"]
+CREDENTIALS:   [configured secret provider / protected netrc file]
 ```
 
 If the user doesn't have a Cloud service yet, direct them to https://clickhouse.cloud/.
@@ -260,9 +246,11 @@ If the user doesn't have a Cloud service yet, direct them to https://clickhouse.
 
 **Step 1: Validate connection (MANDATORY)**
 
+Provision the protected netrc file described in [CREDENTIALS.md](CREDENTIALS.md#clickhouse-cloud-over-http), and set `CLICKHOUSE_NETRC` to its path. The hostname must match the intended Cloud service.
+
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "SELECT 1" \
   --max-time 10
 # Expected: 1
@@ -277,7 +265,7 @@ Common errors:
 
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "CREATE DATABASE IF NOT EXISTS [database-name]"
 ```
 
@@ -294,10 +282,10 @@ CLICKHOUSE_PASSWORD=<actual-cloud-password>
 
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "SELECT id, current, finalized FROM [database-name].sync"
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "ALTER TABLE [database-name].sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1"
 ```
 
@@ -314,7 +302,7 @@ Check the first log line — same rule as local: `"Start indexing from X"` is co
 
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "SELECT COUNT(*) FROM [database-name].[main-table]"
 # Expected: > 0
 ```
@@ -323,7 +311,7 @@ Sample data:
 
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "SELECT * FROM [database-name].[main-table] LIMIT 5 FORMAT Vertical"
 ```
 
@@ -331,7 +319,7 @@ Sync progress:
 
 ```bash
 curl -X POST "https://[service-id].[region].aws.clickhouse.cloud:8443/" \
-  --user "default:[password]" \
+  --netrc-file "$CLICKHOUSE_NETRC" \
   -d "
 SELECT
     COUNT(*) as total_events,
@@ -344,16 +332,10 @@ FORMAT Vertical"
 
 ### MCP Setup (Cloud)
 
-```bash
-claude mcp add -t stdio \
-  -e CLICKHOUSE_HOST=[service-id].[region].aws.clickhouse.cloud \
-  -e CLICKHOUSE_PORT=8443 \
-  -e CLICKHOUSE_USER=default \
-  -e CLICKHOUSE_PASSWORD=[password] \
-  -e CLICKHOUSE_SECURE=true \
-  -e CLICKHOUSE_DATABASE=[database-name] \
-  -- clickhouse-cloud /path/to/.local/bin/mcp-clickhouse
-```
+Use the client's supported secret store or launch-time environment injection as
+outlined in [CREDENTIALS.md](CREDENTIALS.md#mcp-and-hosted-applications). Configure
+the Cloud hostname, port `8443`, TLS enabled, and the intended database/user;
+provide the password through the secret provider.
 
 ### Deploying the Indexer Application (Cloud Options)
 
@@ -368,16 +350,11 @@ ClickHouse Cloud is the database. The indexer process itself can run anywhere:
 
 **Railway quick reference:**
 
-```bash
-npm i -g @railway/cli
-railway login && railway init
-railway variables set \
-  CLICKHOUSE_URL="$CLICKHOUSE_URL" \
-  CLICKHOUSE_DATABASE="$CLICKHOUSE_DATABASE" \
-  CLICKHOUSE_USER="$CLICKHOUSE_USER" \
-  CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD"
-railway up
-```
+For an authorized deployment, configure `CLICKHOUSE_URL`, `CLICKHOUSE_DATABASE`,
+and `CLICKHOUSE_USER` for the target service. Supply `CLICKHOUSE_PASSWORD` through
+Railway's secret-variable interface or an approved secret manager, then deploy
+the indexer using the project's normal workflow. Do not include secret values
+in CLI arguments or deployment summaries.
 
 ### Cloud Deployment Summary Template
 
@@ -405,8 +382,8 @@ FROM [database-name].[main-table];
 **Error**: `Code: 516. DB::Exception: Authentication failed` or `password is incorrect`
 
 **Fix**:
-- Local: `docker inspect $CONTAINER_NAME | grep CLICKHOUSE_PASSWORD`
-- Cloud: Verify password in ClickHouse Cloud console
+- Local: verify the configured credential source with `SELECT 1`; do not inspect or print container secrets
+- Cloud: have the credential provider verify the configured secret for this service
 - Update `.env` with the correct password
 
 ### Container Port Conflict (Local only)
@@ -443,7 +420,6 @@ docker stop clickhouse && docker rm clickhouse
 6. After 30 seconds, verify data is flowing:
    ```bash
    docker exec $CONTAINER_NAME clickhouse-client \
-     --password "$CLICKHOUSE_PASSWORD" \
      --database "$DATABASE_NAME" \
      --query "SELECT COUNT(*) FROM $MAIN_TABLE"
    ```
