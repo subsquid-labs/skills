@@ -14,6 +14,13 @@ detail lives in the auto-generated section of each
   is created, how forks and crashes are repaired, the target's error codes, and
   how to query the resulting tables without running up a bill.
 
+### Improved
+
+- `pipes-sdk` connection examples use injected credentials or protected client files,
+  and diagnostics keep secret values out of terminal output.
+- `pipes-sdk` and `portal` validate fetched data before using it in tool requests;
+  custom ABI generation uses reviewed local JSON inputs.
+
 ## August 28, 2026 — v1.0.0
 
 ### New
