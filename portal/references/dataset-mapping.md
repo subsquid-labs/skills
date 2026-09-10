@@ -1,6 +1,6 @@
 # Full Portal Chain Name Mapping
 
-SQD documentation summarizes coverage as **140+ networks**, including non-public datasets. The public Portal catalog returned **138 entries on 2026-08-26**. This file maps common chain names to Portal dataset names. For the always-current public list:
+SQD documentation summarizes coverage as **140+ networks**, including non-public datasets. The public Portal catalog returned **139 entries on 2026-09-10**. This file maps common chain names to Portal dataset names. For the always-current public list:
 
 ```bash
 curl -sS -A 'Mozilla/5.0' https://portal.sqd.dev/datasets   # public catalog with real_time flags
@@ -176,7 +176,7 @@ shibuya-substrate shiden-mainnet shiden-substrate skale-nebula sora-mainnet subs
 superseed-mainnet tanssi ternoa turing-avail turing-mainnet
 ```
 
-## Public Catalog Snapshot (2026-08-26, 138 entries)
+## Public Catalog Snapshot (2026-09-10, 139 entries)
 
 Grep this block to check a public catalog name, then verify with `/metadata` and the retirement list before use. Catalog membership is discovery data, not an availability commitment.
 
@@ -190,7 +190,7 @@ blast-l2-mainnet blast-sepolia bob-mainnet bob-sepolia celo-alfajores-testnet ce
 core-mainnet dogechain-mainnet eden enjin-canary-matrix enjin-matrix enjin-relay ethereum-hoodi
 ethereum-mainnet ethereum-mainnet-tb ethereum-sepolia etherlink-mainnet etherlink-shadownet
 etherlink-testnet flare-mainnet galxe-gravity gelato-opcelestia-raspberry gnosis-mainnet
-hedera-mainnet hemi-mainnet hemi-testnet hydradx hyperliquid-fills hyperliquid-mainnet
+hashkey-mainnet hedera-mainnet hemi-mainnet hemi-testnet hydradx hyperliquid-fills hyperliquid-mainnet
 hyperliquid-replica-cmds hyperliquid-testnet ink-mainnet ink-sepolia invarch-parachain
 invarch-tinkernet katana-mainnet kusama linea-mainnet lukso-mainnet manta-pacific
 manta-pacific-sepolia mantle-mainnet mantle-sepolia megaeth-mainnet megaeth-testnet metis-mainnet

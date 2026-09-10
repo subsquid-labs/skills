@@ -112,7 +112,7 @@ After `npx --yes npm-check-updates --filter "@subsquid/*" --target "@latest" --u
 
 ## Block height → slot conversion
 
-The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev/en/sdk/migration/height-to-slot>. It binary-searches the public Portal to translate a v2 height into the corresponding slot. Reference values from the doc and the canonical `solana-example/master`:
+The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev/en/sdk/squid-sdk/solana/guides/migration/height-to-slot>. It binary-searches the public Portal to translate a v2 height into the corresponding slot. Reference values from the doc and the canonical `solana-example/master`:
 
 | Height (v2)  | Slot (Portal) |
 |--------------|---------------|
@@ -143,7 +143,7 @@ echo '.env' >> .gitignore
 
 `apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/solana-stream@0.5.0`; earlier 0.x versions reject the field.
 
-Reference docs: <https://docs.sqd.dev/changelog/gateway-api-keys> · <https://docs.sqd.dev/en/data/api-keys>
+Reference docs: <https://docs.sqd.dev/announcements/gateway-api-keys> · <https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-api-key>
 
 ## Reference template
 

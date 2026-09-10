@@ -466,7 +466,14 @@ The `asset` filter matches the raw hex `asset_name` verbatim (`31303035313537` =
 
 ## MCP Tool Availability
 
-There are **no Tron-specific Portal MCP tools yet** (no `portal_tron_query_*`). Dataset-agnostic tools work with `tron-mainnet`: `portal_list_networks`, `portal_get_network_info`, `portal_get_head`, `portal_debug_resolve_time_to_block`, `portal_debug_query_blocks`. For actual Tron data queries, use the raw Portal Stream API as shown above.
+Portal MCP server 0.8.5 (checked 2026-09-10) exposes two Tron tools:
+
+| Tool | Covers | Notes |
+|---|---|---|
+| `portal_tron_query_logs` | TVM event logs by contract address, `topic0` or an `event` alias (`transfer`, `approval`, `swap`, `mint`, `burn`), and indexed topics `topic1`..`topic3` | `decode: true` returns decoded fields with Base58 addresses; the parent transaction hash is on every row; `include_transaction` attaches type, caller, contract, result, and fee |
+| `portal_tron_query_transactions` | Native TRX transfers (`kind: "transfer"`), TRC-10 transfers (`transfer_asset` with `asset`), contract calls (`trigger_smart_contract` with `contract_addresses`, `method`, or `sighash`), or any contract type (`kind: "all"` with `types`) | `include_logs` and `include_internal_transactions` attach the related records |
+
+Both accept addresses in any form (Base58 `T…`, `41`-prefixed hex, `0x` or bare 20-byte hex), default to `tron-mainnet`, take `timeframe`, `from_timestamp`/`to_timestamp`, or block bounds, cap `limit` at 25, and paginate with `cursor`. Dataset-agnostic tools (`portal_list_networks`, `portal_get_network_info`, `portal_get_head`, `portal_debug_resolve_time_to_block`, `portal_debug_query_blocks`) also accept `tron-mainnet`. Use the raw Stream API above for exports, unbounded ranges, or the exact request bodies.
 
 ## Official Docs
 
@@ -479,7 +486,7 @@ There are **no Tron-specific Portal MCP tools yet** (no `portal_tron_query_*`). 
 For durable Tron indexers, the Pipes SDK ships a native Tron module:
 
 ```typescript
-import { TronQueryBuilder, tronPortalStream } from '@subsquid/pipes/tron'
+import { tronPortalStream, tronQuery } from '@subsquid/pipes/tron'
 ```
 
 See the **pipes-sdk** skill for the full pattern.

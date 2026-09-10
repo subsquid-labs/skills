@@ -13,7 +13,7 @@ Current catalog (verified against the published beta.2 schema): `networkType: "e
 
 > **The CLI's built-in network list can lag Portal** — `defaultNetwork` validates against a bundled slug list, which may still offer datasets Portal has dropped (e.g. `fantom-mainnet`) and miss recent additions. Verify the dataset with `curl -I https://portal.sqd.dev/datasets/{name}/metadata` before scaffolding.
 
-> **Generated projects pin `"@subsquid/pipes": "^1.0.0-beta.1"`**. This installs beta.3 as of 2026-08-26 and will accept stable 1.0.0 once it ships (a plain `^1.0.0` excludes prereleases and resolves to nothing). Pin `1.0.0-beta.4` explicitly for its Pub/Sub signals and lag metrics. Projects from the old alpha CLI pinned the floating `"alpha"` dist-tag instead. Those pull `1.0.0-alpha.22` as of 2026-08-26 and can break on a fresh install; see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#error-pattern-11-renamed-sdk-exports-after-reinstall).
+> **Generated projects pin `"@subsquid/pipes": "^1.0.0-beta.1"`**. This installs beta.6 as of 2026-09-10 and will accept stable 1.0.0 once it is published (a plain `^1.0.0` excludes prereleases and resolves to nothing). Pin `1.0.0-beta.4` explicitly for its Pub/Sub signals and lag metrics. Projects from the old alpha CLI pinned the floating `"alpha"` dist-tag instead. Those pull `1.0.0-alpha.25` as of 2026-09-10 and can break on a fresh install; see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#error-pattern-11-renamed-sdk-exports-after-reinstall).
 
 ## What the CLI generates
 
@@ -270,7 +270,7 @@ Many Solana DeFi protocols use layered architecture where user-facing programs c
 
 ## Tron (No CLI Template)
 
-The Pipes SDK supports Tron natively via `@subsquid/pipes/tron`, but the CLI cannot scaffold Tron projects. Set it up manually (package.json, tsconfig, src/index.ts, sink config). Install a reproducible current range such as `npm i '@subsquid/pipes@^1.0.0-beta.1'` (beta.3 as of 2026-08-26). Official walkthrough: [Tron quickstart](https://docs.sqd.dev/en/sdk/pipes-sdk/tron/quickstart).
+The Pipes SDK supports Tron natively via `@subsquid/pipes/tron`, but the CLI cannot scaffold Tron projects. Set it up manually (package.json, tsconfig, src/index.ts, sink config). Install a reproducible current range such as `npm i '@subsquid/pipes@^1.0.0-beta.1'` (beta.6 as of 2026-09-10). Official walkthrough: [Tron quickstart](https://docs.sqd.dev/en/sdk/pipes-sdk/tron/quickstart).
 
 ```typescript
 import { tronPortalStream, tronQuery } from '@subsquid/pipes/tron'

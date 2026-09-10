@@ -313,7 +313,7 @@ TypeError: evmDecoder is not a function
 SyntaxError: The requested module '@subsquid/pipes/evm' does not provide an export named 'evmPortalSource'
 ```
 
-**Diagnosis:** the project pins the floating `"alpha"` dist-tag (the old alpha CLI's default), which resolves to `1.0.0-alpha.22` as of 2026-08-26. That version already carries the beta-line renames: `evmDecoder` → `evmEventDecoder`, the `evmPortalSource`/`solanaPortalSource`/`hyperliquidFillsPortalSource` aliases removed (only `*PortalStream` remain), `evmPortalMockStream` → `mockEvmPortalStream`, `batchForInsert`/`chunk` → `chunkForInsert`, and query methods such as `addLog` → `addLogRequest`. Confirm with:
+**Diagnosis:** the project pins the floating `"alpha"` dist-tag (the old alpha CLI's default), which resolves to `1.0.0-alpha.25` as of 2026-09-10. That version already carries the beta-line renames: `evmDecoder` → `evmEventDecoder`, the `evmPortalSource`/`solanaPortalSource`/`hyperliquidFillsPortalSource` aliases removed (only `*PortalStream` remain), `evmPortalMockStream` → `mockEvmPortalStream`, `batchForInsert`/`chunk` → `chunkForInsert`, and query methods such as `addLog` → `addLogRequest`. Confirm with:
 ```bash
 npm ls @subsquid/pipes        # installed version
 grep '"@subsquid/pipes"' package.json   # "alpha" = floating tag
