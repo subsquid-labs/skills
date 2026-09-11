@@ -1,6 +1,6 @@
 # SDK 1.0 Features & Testing
 
-Reference for SDK 1.0+ APIs: time-based ranges, `defineAbi`, query builders, typed errors, decode-error hooks, the testing library, Tron/Bitcoin streams, BigQuery/Parquet/Pub/Sub targets, finality, and cursor keying. Examples target `@subsquid/pipes@1.0.0-beta.4`; on 2026-08-26 npm `latest` was beta.3 and the `beta` tag was beta.4.
+Reference for SDK 1.0+ APIs: time-based ranges, `defineAbi`, query builders, typed errors, decode-error hooks, the testing library, Tron/Bitcoin streams, BigQuery/Parquet/Pub/Sub targets, finality, and cursor keying. Examples target `@subsquid/pipes@1.0.0-beta.4`; on 2026-09-10 npm `latest` was beta.6 and the `beta` tag was beta.4.
 
 ## Renamed in the Beta Line
 

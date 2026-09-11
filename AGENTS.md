@@ -14,14 +14,18 @@ Skills live at the repo root. The skill directory name matches the skill's front
 pipes-sdk/                 # Build, deploy, troubleshoot Pipes SDK indexers
   SKILL.md
   references/
-portal/                    # Query SQD Portal across 140+ networks
+portal/                    # Query SQD Portal across 130+ networks
   SKILL.md
   references/
 squid-sdk/
+  migrate-to-portal/       # Move a v2-gateway Squid onto Portal
+    SKILL.md
+    references/
   squid-perf/              # Sync-time performance comparison for Squid SDK
     SKILL.md
     scripts/
     templates/
+    tests/
 ```
 
 ## Creating a New Skill
@@ -29,7 +33,7 @@ squid-sdk/
 ### Directory Structure
 
 ```
-{skill-name}/              # kebab-case with product prefix (e.g., sqd-*)
+{skill-name}/              # kebab-case, no product prefix (pipes-sdk, portal, squid-perf)
   SKILL.md                 # Required: skill definition
   scripts/                 # Optional: executable scripts
   references/              # Optional: supporting documentation
@@ -47,9 +51,10 @@ squid-sdk/
 ```markdown
 ---
 name: {skill-name}
-description: {One sentence describing what the skill does and when to use it. This is what the agent sees at startup — be specific about activation.}
-compatibility: {Optional: environment requirements}
-allowed-tools: [{Optional: tool names}]
+description: {What the skill does and when to use it, in the third person. Only name and description load at startup, so name the concrete triggers.}
+license: Apache-2.0
+compatibility: {Optional: environment requirements, max 500 characters}
+allowed-tools: {Optional: space-separated tool names}
 metadata:
   author: subsquid
   version: "1.2.0"
@@ -73,6 +78,8 @@ metadata:
 - {Pointers to sibling skills}
 ```
 
+Only the fields defined by the [Agent Skills specification](https://agentskills.io/specification) are allowed: `name`, `description`, `license`, `compatibility`, `allowed-tools`, and `metadata`. The validator rejects anything else, so runtime-specific keys (for example Claude Code's `argument-hint`) cannot be used; put invocation hints in the description instead.
+
 ### Best Practices for Context Efficiency
 
 Only the skill name and description load at agent startup. The full `SKILL.md` loads into context when the skill is activated.
@@ -83,6 +90,7 @@ Only the skill name and description load at agent startup. The full `SKILL.md` l
 - **Write specific descriptions** — the agent decides when to activate based on this line.
 - **Progressive disclosure** — link to reference files that get read only when needed.
 - **File references work one level deep** — link directly from SKILL.md to `references/*.md`.
+- **Date-stamp upstream state.** A count or version that tracks something outside this repo (npm dist-tags, the Portal catalog size, the MCP tool count) carries the date it was checked and the command or URL that re-checks it. Refresh the stamp whenever you touch the claim.
 
 ### Script Requirements
 
@@ -138,8 +146,11 @@ uvx --from skills-ref agentskills validate ./{skill-name}
 
 This checks that `SKILL.md` frontmatter is valid and follows naming conventions.
 
-The release workflow runs this same check against all four skill directories, so
-a skill that fails validation cannot ship in a release.
+The pull request workflow (`.github/workflows/pr-checks.yml`) and the release
+workflow both run this check against all four skill directories, so a skill
+that fails validation cannot be merged or released. The pull request workflow
+also runs the version-step check described under
+[Per-skill versions](#per-skill-versions).
 
 ## Releases
 
@@ -161,6 +172,22 @@ of what breaks for someone who has already installed:
 Repo tags are independent of the per-skill `metadata.version` in each
 `SKILL.md`. Both keep moving; each release body carries a generated table of the
 skill versions it contains, so the two never have to be reconciled by hand.
+
+### Per-skill versions
+
+Every pull request that changes a file under a skill moves that skill's
+`metadata.version` by exactly one patch step (`1.6.1` becomes `1.6.2`), no
+matter how large the change. Do not decide a minor or major step from the size
+of the diff: those are reserved for the maintainer's explicit request and need a
+`version:minor` or `version:major` label on the pull request. A skill whose
+files did not change keeps its version.
+
+```bash
+# Check the working tree against main before pushing
+node .github/scripts/check-skill-versions.mjs origin/main
+```
+
+The pull request workflow runs the same check, so a wrong step blocks the merge.
 
 ### Writing changelog entries
 

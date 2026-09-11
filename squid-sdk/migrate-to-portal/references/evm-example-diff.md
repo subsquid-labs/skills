@@ -227,7 +227,7 @@ echo '.env' >> .gitignore
 
 `apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/evm-processor@1.30.0`; earlier versions reject the field.
 
-Reference docs: <https://docs.sqd.dev/changelog/gateway-api-keys> · <https://docs.sqd.dev/en/data/api-keys>
+Reference docs: <https://docs.sqd.dev/announcements/gateway-api-keys> · <https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-api-key>
 
 ## Reference templates
 

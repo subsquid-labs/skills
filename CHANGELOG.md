@@ -16,10 +16,31 @@ detail lives in the auto-generated section of each
 
 ### Improved
 
+- `portal` now routes Tron questions to the `portal_tron_query_logs` and
+  `portal_tron_query_transactions` MCP tools and EVM internal-call questions to
+  `portal_evm_query_traces`, and points at the server's `sqd://investigations`
+  workflow guide. The catalog notes match Portal MCP server 0.8.5 (28 public
+  tools plus 3 debug tools).
 - `pipes-sdk` connection examples use injected credentials or protected client files,
   and diagnostics keep secret values out of terminal output.
 - `pipes-sdk` and `portal` validate fetched data before using it in tool requests;
   custom ABI generation uses reviewed local JSON inputs.
+- Every skill declares its Apache-2.0 license in its frontmatter, so a skill
+  installed on its own carries its license terms.
+- `migrate-to-portal` and `squid-perf` describe their triggers more precisely,
+  and `migrate-to-portal` links to the current documentation URLs instead of
+  redirecting ones.
+
+### Fixed
+
+- `pipes-sdk` version notes match the npm registry on 2026-09-10: the `alpha`
+  tag resolves to 1.0.0-alpha.25 and the generated caret range installs
+  1.0.0-beta.6.
+- The Portal dataset catalog snapshot matches the live catalog on 2026-09-10
+  (139 public entries, `hashkey-mainnet` added), and the network count is the
+  same everywhere in the repository.
+- The `squid-sdk` README no longer claims an MIT license or a v2 API-key step
+  for Solana; both now match the skills and the repository license.
 
 ## August 28, 2026 — v1.0.0
 

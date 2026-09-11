@@ -1,16 +1,12 @@
 ---
 name: pipes-sdk
 description: Build, configure, deploy, and troubleshoot durable blockchain indexers with the Subsquid Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) when Portal MCP or curl previews are insufficient for backfills, recurring syncs, joins, app-owned data, or production analytics.
-compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli; Node.js v22 LTS (@subsquid/pipes requires >=22.15.0) — avoid v25+.
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Grep
+license: Apache-2.0
+compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli and Node.js 22 LTS (@subsquid/pipes requires >=22.15.0; avoid v25+).
+allowed-tools: Bash Read Write Edit Grep
 metadata:
   author: subsquid
-  version: "1.6.1"
+  version: "1.6.2"
   category: core
 ---
 
@@ -61,9 +57,9 @@ Before scaffolding, say why Pipes is the right surface. Portal MCP is best for b
 
 **CLI:** `@subsquid/pipes-cli@1.0.0-beta.2`. For CLI-supported EVM and SVM projects, always use programmatic mode via `--config '{...}'` (a JSON string or a path to a config file) instead of writing the generated scaffold by hand. Tron, Bitcoin, and Hyperliquid have no CLI templates; use the reviewed manual patterns linked below.
 
-**npm dist-tags (verified 2026-09-03):** the SDK is in **1.0.0 beta**. `@subsquid/pipes@latest` is `1.0.0-beta.6` and `@subsquid/pipes@beta` is `1.0.0-beta.4`, so `latest` is ahead of `beta`; the CLI-generated `^1.0.0-beta.1` range therefore resolves to beta.6. Pin the exact version you tested against. The CLI trap remains: `@subsquid/pipes-cli@latest` is still the old `1.0.0-alpha.1`; keep the explicit `pipes-cli@1.0.0-beta.2` pin (or use its `beta` dist-tag). Recheck tags with `npm view @subsquid/pipes dist-tags --json` before changing pins.
+**npm dist-tags (verified 2026-09-10):** the SDK is in **1.0.0 beta**. `@subsquid/pipes@latest` is `1.0.0-beta.6` and `@subsquid/pipes@beta` is `1.0.0-beta.4`, so `latest` is ahead of `beta`; the CLI-generated `^1.0.0-beta.1` range therefore resolves to beta.6. Pin the exact version you tested against. The CLI trap remains: `@subsquid/pipes-cli@latest` is still the old `1.0.0-alpha.1`; keep the explicit `pipes-cli@1.0.0-beta.2` pin (or use its `beta` dist-tag). Recheck tags with `npm view @subsquid/pipes dist-tags --json` before changing pins.
 
-**Beta hard-renamed the SDK surface.** Current names include `evmEventDecoder` (was `evmDecoder`), `mockEvmPortalStream` (was `evmPortalMockStream`), `chunkForInsert` (was `batchForInsert`/`chunk`), and `add*Request` query-builder methods (for example, `addLogRequest` and `addInstructionRequest`). The `evmPortalSource`/`solanaPortalSource`/`hyperliquidFillsPortalSource` aliases are gone; only the `*PortalStream` names exist. Transform a raw query with `query.build().pipe(...)` and pass the result as `outputs`; source-level `.pipe()` is gone. Projects scaffolded by the old alpha CLI pinned the floating `"alpha"` dist-tag, which now resolves to `1.0.0-alpha.22`, so an old project can break on a fresh install. Use the full rename map in [SDK_FEATURES.md](references/SDK_FEATURES.md#renamed-in-the-beta-line), or pin the exact old SDK version temporarily.
+**Beta hard-renamed the SDK surface.** Current names include `evmEventDecoder` (was `evmDecoder`), `mockEvmPortalStream` (was `evmPortalMockStream`), `chunkForInsert` (was `batchForInsert`/`chunk`), and `add*Request` query-builder methods (for example, `addLogRequest` and `addInstructionRequest`). The `evmPortalSource`/`solanaPortalSource`/`hyperliquidFillsPortalSource` aliases are gone; only the `*PortalStream` names exist. Transform a raw query with `query.build().pipe(...)` and pass the result as `outputs`; source-level `.pipe()` is gone. Projects scaffolded by the old alpha CLI pinned the floating `"alpha"` dist-tag, which now resolves to `1.0.0-alpha.25`, so an old project can break on a fresh install. Use the full rename map in [SDK_FEATURES.md](references/SDK_FEATURES.md#renamed-in-the-beta-line), or pin the exact old SDK version temporarily.
 
 ## Known CLI Quirks
 
@@ -280,5 +276,5 @@ Dashboard-grade ClickHouse patterns (time bucketing, conditional aggregation, pa
 
 ## Related
 
-- **portal:** query blockchain data across 140+ networks via Portal MCP or the SQD Portal Stream API. Use it to verify contract events, discover dataset names, cross-check indexed data, and decide when a query should become a Pipes/Squid pipeline.
+- **portal:** query blockchain data across 130+ networks via Portal MCP or the SQD Portal Stream API. Use it to verify contract events, discover dataset names, cross-check indexed data, and decide when a query should become a Pipes/Squid pipeline.
 - **Ponder on Portal** — if the user already has a [Ponder](https://ponder.sh) indexer, [`@subsquid/ponder`](https://docs.sqd.dev/en/sdk/alternative-clients/ponder) backs its historical sync with Portal as a drop-in (same handlers/schema; one `portal:` line per chain) — no Pipes rewrite needed.

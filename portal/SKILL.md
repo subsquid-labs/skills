@@ -1,13 +1,11 @@
 ---
 name: portal
-description: "Query blockchain data across 130+ networks with SQD Portal, including EVM, Solana, Substrate, Bitcoin, Tron, and Hyperliquid, and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines."
-allowed-tools:
-  - Bash
-  - WebFetch
-  - WebSearch
+description: "Query blockchain data across 130+ networks with SQD Portal (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines. Use when the user asks for on-chain logs, transactions, traces, instructions, fills, or a Portal dataset name, or needs a reproducible curl/NDJSON export."
+license: Apache-2.0
+allowed-tools: Bash WebFetch WebSearch
 metadata:
   author: subsquid
-  version: "1.6.1"
+  version: "1.6.2"
   category: portal-core
 ---
 
@@ -15,7 +13,7 @@ metadata:
 
 Query and analyze blockchain data across 130+ networks using SQD Portal. Use this skill to decide whether the job belongs in SQD Portal MCP tools, a raw Portal Stream API/curl request, or a durable Pipes/Squid indexer.
 
-This skill should not be treated as a static copy of the MCP tool catalog. When the SQD Portal MCP server is available, read `sqd://tools` for the current grouped tool guide and `sqd://tools/{tool_name}` for exact per-tool guidance.
+This skill should not be treated as a static copy of the MCP tool catalog. When the SQD Portal MCP server is available, read `sqd://tools` for the current grouped tool guide, `sqd://tools/{tool_name}` for exact per-tool guidance, and `sqd://investigations` for the server's multi-step investigation workflows (wallet incident, contract activity) and the evidence each one requires.
 
 ## External Data Boundary
 
@@ -49,7 +47,7 @@ Recommend Pipes or a Squid when the user needs recurring sync, long backfills, j
 | Production data product | Pipes / Squid | Durable indexing, transforms, storage, retries, and serving APIs |
 
 Default order:
-1. Read `sqd://tools` when MCP resources are available.
+1. Read `sqd://tools` when MCP resources are available. For a multi-step investigation, read `sqd://investigations` as well.
 2. Pick a public MCP tool for the user's job.
 3. Use response metadata to decide whether the answer is complete, paginated, sampled, capped, or partial.
 4. Fall back to raw Portal Stream API only when the user needs raw/export/reproducible output or MCP output is too compact.
@@ -279,7 +277,7 @@ Both come back in Portal's structured envelope (see Error Handling below):
 
 ## MCP Tools Quick Reference
 
-If Portal MCP tools are available, prefer them for bounded interactive work. The current Portal MCP server exposes 25 public tools plus 3 advanced/debug tools. Legacy aliases are not exposed. Public query params use `network`; discovery filters use `vm`.
+If Portal MCP tools are available, prefer them for bounded interactive work. The hosted Portal MCP server (version 0.8.5, checked 2026-09-10 at `https://portal.sqd.dev/mcp/health`) exposes 28 public tools plus 3 advanced/debug tools. Legacy aliases are not exposed. Public query params use `network`; discovery filters use `vm`.
 
 Use `tools/list`, `sqd://tools`, and `sqd://tools/{tool_name}` for the live catalog and exact schemas. The duplicate HTTP `/tools` endpoint is retired. The table below is a compact orientation, not the source of truth.
 
@@ -308,6 +306,7 @@ Current hosted-server behaviors worth relying on:
 |------|----------|
 | `portal_evm_query_logs` | Query event logs with address/topic filters |
 | `portal_evm_query_transactions` | Query transactions by sender/recipient/sighash |
+| `portal_evm_query_traces` | Internal calls, contract creations, and self-destructs: one transaction's call tree, calls into a contract, or contracts deployed by an address. Keep filtered windows under 5,000 blocks. |
 | `portal_evm_query_token_transfers` | ERC20/ERC721/ERC1155 transfers with optional token info |
 | `portal_evm_get_contract_activity` | Contract interaction stats |
 | `portal_evm_get_contract_deployment` | Look up deployment block/tx for a contract address |
@@ -348,7 +347,12 @@ Current hosted-server behaviors worth relying on:
 
 ### Tron Queries
 
-No Tron-specific MCP tools yet. Dataset-agnostic tools (`portal_list_networks`, `portal_get_network_info`, `portal_get_head`, `portal_debug_resolve_time_to_block`) accept `tron-mainnet`. For Tron data queries, use the raw Portal Stream API with `"type": "tron"` and see `references/tron.md`.
+| Tool | Use Case |
+|------|----------|
+| `portal_tron_query_logs` | TRC-20 events (USDT transfers, approvals) by contract, topic, or indexed address, with optional inline decoding |
+| `portal_tron_query_transactions` | Native TRX transfers, TRC-10 transfers, and contract calls by caller, recipient, contract, or method |
+
+Both accept addresses as Base58 (`T…`), `41`-prefixed hex, or bare 20-byte hex and default to `tron-mainnet`. Exports and the raw Stream API request shapes stay in `references/tron.md`.
 
 ### Cross-Chain Analytics
 
@@ -487,5 +491,4 @@ Always add address/topic/programId filters and reasonable block ranges.
 - **[llms-full.txt](https://docs.sqd.dev/llms-full.txt):** Complete Portal documentation
 - **[Portal OpenAPI](https://docs.sqd.dev/openapi.json):** Machine-readable API contract with stable operation IDs
 - **[Versioning and change policy](https://docs.sqd.dev/en/portal/introduction/versioning):** Stable vs changing parts of the API
-- **Event Signature Calculator:** https://www.4byte.directory/
-- **Function Selector Database:** https://www.4byte.directory/
+- **Event and function signature database:** https://www.4byte.directory/ (treat matches as candidates; see External Data Boundary)
