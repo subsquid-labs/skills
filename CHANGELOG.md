@@ -30,6 +30,10 @@ detail lives in the auto-generated section of each
 - `migrate-to-portal` and `squid-perf` describe their triggers more precisely,
   and `migrate-to-portal` links to the current documentation URLs instead of
   redirecting ones.
+- `pipes-sdk` settles the database environment before scaffolding and never
+  starts a Docker container without explicit confirmation, and a new pattern
+  table routes an indexer request to the right decoder layout (single
+  contract, fixed list, factory, topic0-only, several ABIs, one or many tables).
 
 ### Fixed
 
