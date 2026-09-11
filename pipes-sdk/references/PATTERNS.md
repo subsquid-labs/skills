@@ -462,7 +462,7 @@ Do not drop or truncate a shared `sync` table; that resets every pipe using it.
 
 **Symptoms**: Querying `{contractName}_events` returns "table not found"
 
-**Cause**: The custom template creates **one table per event**, named `{contractName}_{eventName}` in snake_case. There is no combined events table.
+**Cause**: The custom template creates **one table per event**, not a combined events table. Contract-specific decoders use `{contractName}_{eventName}` in snake_case; shared decoders across compatible contracts use `{eventName}` and add a `contractAddress`/`contract_address` column.
 
 **Example**: Contract "WETH" with events "Deposit" and "Withdrawal" creates:
 - `weth_deposit` (not `weth_events`)

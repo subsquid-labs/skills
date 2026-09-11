@@ -207,7 +207,7 @@ This data enables:
 2. **Which chain?** [Detected chain] or multi-chain?
 3. **Time range?** Full history or recent blocks?
 4. **Storage?** ClickHouse (recommended), PostgreSQL, or BigQuery?
-5. **Database environment?** Existing install, ClickHouse Cloud, or a new Docker container? Do not start a container without an explicit yes; if the answer is no Docker, delete the generated `docker-compose.yml` and `Dockerfile`.
+5. **Environment?** For ClickHouse/PostgreSQL: existing install, ClickHouse Cloud, or a new Docker container (explicit yes required; if no Docker, delete the generated `docker-compose.yml` and `Dockerfile`)? For BigQuery: project, dataset, region, and credentials (the dataset must already exist)? For Parquet/Pub/Sub: output path or topic plus the needed credentials/runtime?
 ```
 
 ## When to Stop Searching

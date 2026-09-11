@@ -88,7 +88,7 @@ See [TEMPLATES.md](references/TEMPLATES.md) for the full catalog: `erc20Transfer
 - **Check for proxy contracts** — #1 failure mode; ~6 of 9 real indexers need manual proxy resolution
 - Find the deployment block (for full history) or pick a recent start block (for faster tests)
 - Decide on sink (ClickHouse recommended, PostgreSQL with Drizzle, BigQuery — see [BIGQUERY_TARGET.md](references/BIGQUERY_TARGET.md), Parquet, or Pub/Sub)
-- **Decide the database environment and get it confirmed:** an existing ClickHouse or PostgreSQL install, ClickHouse Cloud, or a new local Docker container. Never start a container without the user's explicit yes. The CLI writes `docker-compose.yml` and a `Dockerfile` into every project; when the user does not want Docker, delete both and point `.env` at their database.
+- **Confirm the sink environment before scaffolding:** for ClickHouse or PostgreSQL, confirm an existing install, ClickHouse Cloud, or a new local Docker container; never start a container without the user's explicit yes. The CLI writes `docker-compose.yml` and a `Dockerfile` into every project; when the user does not want Docker, delete both and point `.env` at their database. For BigQuery, confirm the project, dataset, region, and credentials; the dataset must already exist. For Parquet or Pub/Sub, confirm the output path or topic plus the required credentials/runtime.
 - Name the project
 
 ### Step 1: Inspect templates (optional)
@@ -143,7 +143,7 @@ Template IDs must be camelCase: `uniswapV3Swaps` (not `uniswap-v3-swaps`), `erc2
    grep "contracts:" <project>/src/index.ts
    ```
 
-5. **Know your table names (custom template):** one table per event, named `{contractName}_{eventName}` in snake_case. There is no combined table.
+5. **Know your table names (custom template):** there is one table per event by default, not a combined table. A contract-specific decoder uses `{contractName}_{eventName}` in snake_case; a shared decoder across compatible contracts uses `{eventName}` and includes a `contractAddress`/`contract_address` column to tell rows apart.
 
 ### Step 4: Start and validate
 
@@ -197,11 +197,11 @@ Pick the decoder layout from the request before choosing a template:
 
 | Dimension | If the request has | Use |
 |---|---|---|
-| Contracts | one address, or a fixed list sharing one ABI | one `evmEventDecoder` with the full `contracts` list; `d.contract` tells the rows apart (see [DeFi Protocol Forks](#defi-protocol-forks)) |
+| Contracts | one address, or a fixed list sharing one ABI | one `evmEventDecoder` with the full `contracts` list; shared-decoder rows carry `contractAddress`/`contract_address` derived from `d.contract` (see [DeFi Protocol Forks](#defi-protocol-forks)) |
 | | addresses created by a factory | the [factory pattern](references/PATTERNS.md#3-factory-pattern-with-pre-indexing) |
 | | any contract that emits the event | [topic0-only filtering](references/PATTERNS.md#4-topic0-only-global-filtering): omit `contracts` |
 | Events | different ABIs on different contracts | one decoder per ABI under `outputs: { a: evmEventDecoder(...), b: evmEventDecoder(...) }` ([multi-output](references/PATTERNS.md#5-parallel-event-decoding-multi-output)) |
-| Tables | one table per event | the `custom` template default, `{contractName}_{eventName}` |
+| Tables | one table per event | the `custom` template default: `{contractName}_{eventName}` for contract-specific decoders, or `{eventName}` plus a contract-address column for shared decoders |
 | | one combined table | map every output to the same row shape in the decoder's `.pipe((data) => ...)` and insert once |
 | Row transform | the same for every event | one helper that flattens `d.event`, `d.block.number`, `d.rawEvent.transactionHash`, `d.rawEvent.logIndex`, and `d.timestamp` |
 | | different per event | a separate map per named output inside `.pipe()` |
