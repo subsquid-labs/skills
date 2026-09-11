@@ -207,6 +207,7 @@ This data enables:
 2. **Which chain?** [Detected chain] or multi-chain?
 3. **Time range?** Full history or recent blocks?
 4. **Storage?** ClickHouse (recommended), PostgreSQL, or BigQuery?
+5. **Database environment?** Existing install, ClickHouse Cloud, or a new Docker container? Do not start a container without an explicit yes; if the answer is no Docker, delete the generated `docker-compose.yml` and `Dockerfile`.
 ```
 
 ## When to Stop Searching

@@ -6,7 +6,7 @@ compatibility: Requires pnpm/pnpx for @subsquid/pipes-cli and Node.js 22 LTS (@s
 allowed-tools: Bash Read Write Edit Grep
 metadata:
   author: subsquid
-  version: "1.6.2"
+  version: "1.6.3"
   category: core
 ---
 
@@ -88,6 +88,7 @@ See [TEMPLATES.md](references/TEMPLATES.md) for the full catalog: `erc20Transfer
 - **Check for proxy contracts** — #1 failure mode; ~6 of 9 real indexers need manual proxy resolution
 - Find the deployment block (for full history) or pick a recent start block (for faster tests)
 - Decide on sink (ClickHouse recommended, PostgreSQL with Drizzle, BigQuery — see [BIGQUERY_TARGET.md](references/BIGQUERY_TARGET.md), Parquet, or Pub/Sub)
+- **Decide the database environment and get it confirmed:** an existing ClickHouse or PostgreSQL install, ClickHouse Cloud, or a new local Docker container. Never start a container without the user's explicit yes. The CLI writes `docker-compose.yml` and a `Dockerfile` into every project; when the user does not want Docker, delete both and point `.env` at their database.
 - Name the project
 
 ### Step 1: Inspect templates (optional)
@@ -191,6 +192,19 @@ Standard diagnostic flow: read redacted error → match pattern → read `src/in
 ## Key SDK Patterns
 
 The Pipes SDK is feature-rich — a handful of patterns cover 80% of use cases.
+
+Pick the decoder layout from the request before choosing a template:
+
+| Dimension | If the request has | Use |
+|---|---|---|
+| Contracts | one address, or a fixed list sharing one ABI | one `evmEventDecoder` with the full `contracts` list; `d.contract` tells the rows apart (see [DeFi Protocol Forks](#defi-protocol-forks)) |
+| | addresses created by a factory | the [factory pattern](references/PATTERNS.md#3-factory-pattern-with-pre-indexing) |
+| | any contract that emits the event | [topic0-only filtering](references/PATTERNS.md#4-topic0-only-global-filtering): omit `contracts` |
+| Events | different ABIs on different contracts | one decoder per ABI under `outputs: { a: evmEventDecoder(...), b: evmEventDecoder(...) }` ([multi-output](references/PATTERNS.md#5-parallel-event-decoding-multi-output)) |
+| Tables | one table per event | the `custom` template default, `{contractName}_{eventName}` |
+| | one combined table | map every output to the same row shape in the decoder's `.pipe((data) => ...)` and insert once |
+| Row transform | the same for every event | one helper that flattens `d.event`, `d.block.number`, `d.rawEvent.transactionHash`, `d.rawEvent.logIndex`, and `d.timestamp` |
+| | different per event | a separate map per named output inside `.pipe()` |
 
 - **Event parameter filtering** (server-side): filter by indexed params at the decoder for max throughput — see [PATTERNS.md](references/PATTERNS.md#6-event-parameter-filtering-server-side).
 - **Factory pattern**: track dynamically deployed children (Uniswap pools, MetaMorpho vaults). Includes SQLite cache, cold-start delay, `d.factory?.event.*` metadata — see [PATTERNS.md](references/PATTERNS.md#3-factory-pattern-with-pre-indexing).
