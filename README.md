@@ -109,7 +109,7 @@ Why is my indexer syncing slowly?
 
 ## Contributing
 
-Open a focused pull request and validate every changed skill with the `skills-ref` command documented in [AGENTS.md](./AGENTS.md#validation). If your change is user-visible, add an entry under `## Unreleased` in [CHANGELOG.md](./CHANGELOG.md) — see [Releases](./AGENTS.md#releases) for the conventions.
+Open a focused pull request and validate every changed skill with the `skills-ref` command documented in [AGENTS.md](./AGENTS.md#validation). Move each changed skill's `metadata.version` by one patch step; the pull request checks enforce this (see [Per-skill versions](./AGENTS.md#per-skill-versions)). If your change is user-visible, add an entry under `## Unreleased` in [CHANGELOG.md](./CHANGELOG.md) — see [Releases](./AGENTS.md#releases) for the conventions.
 
 ## License
 

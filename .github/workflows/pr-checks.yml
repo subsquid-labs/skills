@@ -1,0 +1,45 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    name: Validate skills and version steps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate skills
+        run: |
+          # Same check as the release workflow, so a broken SKILL.md fails
+          # here instead of at tag time.
+          python3 -m venv .venv
+          ./.venv/bin/pip install --quiet skills-ref
+          for skill in ./pipes-sdk ./portal ./squid-sdk/migrate-to-portal ./squid-sdk/squid-perf; do
+            echo "::group::validate ${skill}"
+            ./.venv/bin/agentskills validate "${skill}"
+            echo "::endgroup::"
+          done
+          rm -rf .venv
+
+      - name: Check skill version steps
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: |
+          # Every changed skill moves by exactly one patch step. A minor or
+          # major step is allowed only when the PR carries the matching label.
+          allow=patch
+          case " ${LABELS} " in
+            *" version:major "*) allow=major ;;
+            *" version:minor "*) allow=minor ;;
+          esac
+          node .github/scripts/check-skill-versions.mjs "origin/${BASE_REF}" --allow "${allow}"

@@ -5,7 +5,7 @@ license: Apache-2.0
 allowed-tools: Bash WebFetch WebSearch
 metadata:
   author: subsquid
-  version: "1.7.0"
+  version: "1.6.2"
   category: portal-core
 ---
 

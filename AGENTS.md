@@ -146,8 +146,11 @@ uvx --from skills-ref agentskills validate ./{skill-name}
 
 This checks that `SKILL.md` frontmatter is valid and follows naming conventions.
 
-The release workflow runs this same check against all four skill directories, so
-a skill that fails validation cannot ship in a release.
+The pull request workflow (`.github/workflows/pr-checks.yml`) and the release
+workflow both run this check against all four skill directories, so a skill
+that fails validation cannot be merged or released. The pull request workflow
+also runs the version-step check described under
+[Per-skill versions](#per-skill-versions).
 
 ## Releases
 
@@ -169,6 +172,22 @@ of what breaks for someone who has already installed:
 Repo tags are independent of the per-skill `metadata.version` in each
 `SKILL.md`. Both keep moving; each release body carries a generated table of the
 skill versions it contains, so the two never have to be reconciled by hand.
+
+### Per-skill versions
+
+Every pull request that changes a file under a skill moves that skill's
+`metadata.version` by exactly one patch step (`1.6.1` becomes `1.6.2`), no
+matter how large the change. Do not decide a minor or major step from the size
+of the diff: those are reserved for the maintainer's explicit request and need a
+`version:minor` or `version:major` label on the pull request. A skill whose
+files did not change keeps its version.
+
+```bash
+# Check the working tree against main before pushing
+node .github/scripts/check-skill-versions.mjs origin/main
+```
+
+The pull request workflow runs the same check, so a wrong step blocks the merge.
 
 ### Writing changelog entries
 
