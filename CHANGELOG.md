@@ -16,6 +16,12 @@ detail lives in the auto-generated section of each
 
 ### Improved
 
+- `portal` handles setup requests such as the Portal app's "Onboard your agent"
+  prompt: it adds the Portal MCP server for Claude Code, Codex, Cursor and VS Code,
+  stores a Portal API key outside version control, sends it as
+  `Authorization: Bearer` (or `x-api-key`), checks it with a one-block stream
+  request, and explains each `403` code. `pipes-sdk` shows how to pass the key
+  to the Portal client.
 - `portal` now routes Tron questions to the `portal_tron_query_logs` and
   `portal_tron_query_transactions` MCP tools and EVM internal-call questions to
   `portal_evm_query_traces`, and points at the server's `sqd://investigations`
