@@ -1,11 +1,11 @@
 ---
 name: portal
-description: "Query blockchain data across 130+ networks with SQD Portal (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines. Use when the user asks for on-chain logs, transactions, traces, instructions, fills, or a Portal dataset name, or needs a reproducible curl/NDJSON export."
+description: "Query blockchain data across 130+ networks with SQD Portal (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) and choose the right execution path: Portal MCP for bounded answers, Portal Stream API/curl for raw exports, or Pipes/Squid for durable pipelines. Use when the user asks for on-chain logs, transactions, traces, instructions, fills, or a Portal dataset name, needs a reproducible curl/NDJSON export, or asks to be set up for SQD Portal (connect the Portal MCP server, configure a Portal API key)."
 license: Apache-2.0
 allowed-tools: Bash WebFetch WebSearch
 metadata:
   author: subsquid
-  version: "1.6.2"
+  version: "1.6.3"
   category: portal-core
 ---
 
@@ -30,6 +30,11 @@ Use this skill when you need to:
 - Find the correct Portal dataset name for a blockchain
 - Analyze on-chain activity (token transfers, DeFi events, contract deployments, trading)
 - Choose between Portal MCP tools, raw Portal Stream API/curl, or a durable Pipes/Squid indexer
+- Set up a coding agent for Portal: connect the MCP server, store a Portal API key, and check that the key works
+
+## Setup Requests
+
+When the user asks to be set up for SQD Portal, for example from the Portal app's "Onboard your agent" prompt, read `references/setup.md` and follow it. It covers the MCP server entry for each client, when a key is needed, where the user creates one, how to store and send it, and how to read a `403`.
 
 Use Portal MCP tools for bounded interactive answers, summaries, charts, investigation pivots, entity resolution, and normal chat-sized evidence.
 
@@ -369,7 +374,7 @@ Use raw Stream API when:
 - You need exact Portal request bodies for debugging or handoff.
 - The user needs to run the same request outside the MCP client.
 
-The public Portal is shared capacity. Do not promise that every Portal deployment is keyless: authenticated and dedicated Portal endpoints accept an API key in the `x-api-key` header while using the same request paths and payloads.
+The public Portal is shared capacity. Do not promise that every Portal deployment is keyless: authenticated and dedicated Portal endpoints take an API key as `Authorization: Bearer <key>` (preferred) or in the `x-api-key` header, with the same request paths and payloads. Keys come from the Portal app; see `references/setup.md` for storing, sending and checking one.
 
 Endpoint shape:
 

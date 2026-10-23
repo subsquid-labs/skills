@@ -66,6 +66,26 @@ an equivalent protected curl config containing the header for the confirmed
 host, or an HTTP client that reads the key from its process environment without
 logging requests. Keep keys out of saved query bodies and public exports.
 
+## Portal API Key
+
+The public Portal needs no key. A plan with a key, or a dedicated Portal, takes
+it on every request. Read the base URL and the key from the environment
+(`SQD_PORTAL_URL`, `SQD_PORTAL_API_KEY`) and pass the key as a header:
+
+```ts
+portal: {
+  url: `${process.env.SQD_PORTAL_URL}/datasets/ethereum-mainnet`,
+  http: {
+    headers: { authorization: `Bearer ${process.env.SQD_PORTAL_API_KEY}` },
+  },
+},
+```
+
+`http` replaces the HTTP client settings as a whole, so keep existing options
+such as `retryAttempts` next to `headers`. Where the key comes from, how to
+check it, and what each `403` code means are in the `portal` skill's
+`references/setup.md`.
+
 ## MCP and Hosted Applications
 
 Use an already configured connector when available. For a new MCP server, use

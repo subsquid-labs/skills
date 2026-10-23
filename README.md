@@ -9,7 +9,7 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 | Skill | Use Case |
 |-------|----------|
 | [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot durable blockchain indexers with the Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) |
-| [**portal**](./portal/) | Query blockchain data across 130+ networks (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) and choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid |
+| [**portal**](./portal/) | Query blockchain data across 130+ networks (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid, and set up an agent with the Portal MCP server and a Portal API key |
 | [**migrate-to-portal**](./squid-sdk/migrate-to-portal/) | Migrate an existing Squid SDK indexer (EVM or Solana) off the v2 gateway onto Portal |
 | [**squid-perf**](./squid-sdk/squid-perf/) | Compare indexer sync-time performance across runs |
 
@@ -55,6 +55,9 @@ in each version, or [CHANGELOG.md](./CHANGELOG.md).
 
 ## Example Prompts
 
+```
+Set me up for SQD Portal and check that my Portal API key works
+```
 ```
 Create a new indexer for USDC transfers on Ethereum
 ```
