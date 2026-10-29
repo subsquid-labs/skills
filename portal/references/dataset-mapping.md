@@ -82,7 +82,6 @@ These datasets stream to the live chain head; everything else is finalized-histo
 | Katana | `katana-mainnet` |
 | Hemi | `hemi-mainnet` |
 | BOB | `bob-mainnet` |
-| Galxe Gravity | `galxe-gravity` |
 | B3 | `b3-mainnet` |
 | Beam | `beam-mainnet` |
 | Prom | `prom-mainnet` |
@@ -189,8 +188,8 @@ bitcoin-mainnet bittensor bittensor-mainnet-evm bittensor-testnet bittensor-test
 blast-l2-mainnet blast-sepolia bob-mainnet bob-sepolia celo-alfajores-testnet celo-mainnet chainflip
 core-mainnet dogechain-mainnet eden enjin-canary-matrix enjin-matrix enjin-relay ethereum-hoodi
 ethereum-mainnet ethereum-mainnet-tb ethereum-sepolia etherlink-mainnet etherlink-shadownet
-etherlink-testnet flare-mainnet galxe-gravity gelato-opcelestia-raspberry gnosis-mainnet
-hashkey-mainnet hedera-mainnet hemi-mainnet hemi-testnet hydradx hyperliquid-fills hyperliquid-mainnet
+etherlink-testnet flare-mainnet gelato-opcelestia-raspberry gnosis-mainnet hashkey-mainnet
+hedera-mainnet hemi-mainnet hemi-testnet hydradx hyperliquid-fills hyperliquid-mainnet
 hyperliquid-replica-cmds hyperliquid-testnet ink-mainnet ink-sepolia invarch-parachain
 invarch-tinkernet katana-mainnet kusama linea-mainnet lukso-mainnet manta-pacific
 manta-pacific-sepolia mantle-mainnet mantle-sepolia megaeth-mainnet megaeth-testnet metis-mainnet
