@@ -234,20 +234,23 @@ the last tag and fills the gaps.
 
 ### Cutting a release
 
+The next tag is one patch step above the latest one: `v1.1.1` follows `v1.1.0`.
+Take a minor or major step only when the maintainer asks for it.
+
 ```bash
 # 1. Move the `## Unreleased` entries under a versioned heading, filling any
 #    gaps from PRs merged since the last tag:
 #      ## <Month D, YYYY> — v<X.Y.Z>
 #    Point the "Pin to a release" examples in README.md at the new tag.
 # 2. Check the notes render as expected:
-node .github/scripts/changelog-section.mjs v1.2.0
+node .github/scripts/changelog-section.mjs v1.1.1
 node .github/scripts/skill-manifest.mjs
 
 # 3. Commit the changelog to main, then tag and push:
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.1.1
+git push origin v1.1.1
 ```
 
 To rehearse without publishing a stable release, push a suffixed tag such as
-`v1.2.0-rc.1`. It publishes as a prerelease, is not marked "Latest", and reuses
-the `v1.2.0` changelog section rather than needing one of its own.
+`v1.1.1-rc.1`. It publishes as a prerelease, is not marked "Latest", and reuses
+the `v1.1.1` changelog section rather than needing one of its own.
