@@ -238,6 +238,7 @@ the last tag and fills the gaps.
 # 1. Move the `## Unreleased` entries under a versioned heading, filling any
 #    gaps from PRs merged since the last tag:
 #      ## <Month D, YYYY> — v<X.Y.Z>
+#    Point the "Pin to a release" examples in README.md at the new tag.
 # 2. Check the notes render as expected:
 node .github/scripts/changelog-section.mjs v1.2.0
 node .github/scripts/skill-manifest.mjs

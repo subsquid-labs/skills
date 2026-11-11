@@ -39,9 +39,9 @@ The commands above track `main`. To install an exact, unchanging version, append
 a release tag — optionally with `@<skill>` to take a single skill from it:
 
 ```bash
-npx skills add subsquid-labs/skills#v1.0.0 --full-depth
-npx skills add subsquid-labs/skills#v1.0.0@portal
-npx skills add subsquid-labs/skills#v1.0.0@squid-perf --full-depth
+npx skills add subsquid-labs/skills#v1.1.0 --full-depth
+npx skills add subsquid-labs/skills#v1.1.0@portal
+npx skills add subsquid-labs/skills#v1.1.0@squid-perf --full-depth
 ```
 
 Every release also attaches a bundle of all skills:

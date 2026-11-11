@@ -7,6 +7,8 @@ detail lives in the auto-generated section of each
 
 ## Unreleased
 
+## November 11, 2026 — v1.1.0
+
 ### New
 
 - `pipes-sdk` now covers BigQuery as a first-class sink: the GCP prerequisites,
@@ -26,6 +28,9 @@ detail lives in the auto-generated section of each
   `portal_tron_query_transactions` MCP tools and EVM internal-call questions to
   `portal_evm_query_traces`, and points at the server's `sqd://investigations`
   workflow guide.
+- `portal` checks an MCP result before stating a fact from it: whether every
+  matching row is present, how current the indexed data is, and whether more
+  pages remain. An answer built on a partial result says so.
 - `pipes-sdk` connection examples use injected credentials or protected client files,
   and diagnostics keep secret values out of terminal output.
 - `pipes-sdk` and `portal` validate fetched data before using it in tool requests;
@@ -44,7 +49,7 @@ detail lives in the auto-generated section of each
   when the slug answers 200"), with chain-specific and target-specific detail
   in references that load only when needed. The skills take less context
   (`portal` 499 lines to 183, `migrate-to-portal` 481 to 84, `pipes-sdk` 294 to
-  193) and an agent follows the same process on every run.
+  194) and an agent follows the same process on every run.
 - `portal` reads the MCP tool catalog from the live server (`sqd://tools`)
   instead of a table that went stale with each server release, continues a
   Stream API response that ends before `toBlock`, and tells the user when a
@@ -85,7 +90,8 @@ detail lives in the auto-generated section of each
 - `pipes-sdk` handles a break in new `custom` EVM projects: CLI 1.0.0-beta.3
   generates contract types with typegen 5, which the generated project cannot
   load (`ERR_MODULE_NOT_FOUND` on the first run). The skill regenerates them
-  with typegen 4.6.0 before starting the indexer.
+  with typegen 4.6.0 before starting the indexer. Reported upstream as
+  [subsquid/pipes-sdk#220](https://github.com/subsquid/pipes-sdk/issues/220).
 - `portal` Substrate examples for Frontier EVM logs use Astar; they used
   Moonbeam, whose datasets retired on 2026-09-22.
 - `migrate-to-portal` no longer offers a gateway API key as a way to keep a
