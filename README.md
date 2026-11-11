@@ -8,10 +8,10 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 | Skill | Use Case |
 |-------|----------|
-| [**pipes-sdk**](./pipes-sdk/) | Build, configure, deploy, and troubleshoot durable blockchain indexers with the Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) |
-| [**portal**](./portal/) | Query blockchain data across 130+ networks (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid) choose between Portal MCP, Portal Stream API/curl, or Pipes/Squid, and set up an agent with the Portal MCP server and a Portal API key |
+| [**pipes-sdk**](./pipes-sdk/) | Build, fix, validate and deploy blockchain indexers with the Pipes SDK (EVM, Solana, Tron, Bitcoin, Hyperliquid) |
+| [**portal**](./portal/) | Query blockchain data through SQD Portal (EVM, Solana, Substrate, Bitcoin, Tron, Hyperliquid), choose between Portal MCP, the Stream API over curl, and an indexer, and set up an agent with the Portal MCP server and a Portal API key |
 | [**migrate-to-portal**](./squid-sdk/migrate-to-portal/) | Migrate an existing Squid SDK indexer (EVM or Solana) off the v2 gateway onto Portal |
-| [**squid-perf**](./squid-sdk/squid-perf/) | Compare indexer sync-time performance across runs |
+| [**squid-perf**](./squid-sdk/squid-perf/) | Measure how long Squid SDK deployments took to sync, and compare them |
 
 ## Installation
 
@@ -39,9 +39,9 @@ The commands above track `main`. To install an exact, unchanging version, append
 a release tag — optionally with `@<skill>` to take a single skill from it:
 
 ```bash
-npx skills add subsquid-labs/skills#v1.0.0 --full-depth
-npx skills add subsquid-labs/skills#v1.0.0@portal
-npx skills add subsquid-labs/skills#v1.0.0@squid-perf --full-depth
+npx skills add subsquid-labs/skills#v1.1.0 --full-depth
+npx skills add subsquid-labs/skills#v1.1.0@portal
+npx skills add subsquid-labs/skills#v1.1.0@squid-perf --full-depth
 ```
 
 Every release also attaches a bundle of all skills:
@@ -104,7 +104,7 @@ Why is my indexer syncing slowly?
 ## Resources
 
 - **SQD:** [sqd.dev](https://sqd.dev)
-- **Pipes SDK:** [github.com/subsquid-labs/pipes-sdk](https://github.com/subsquid-labs/pipes-sdk)
+- **Pipes SDK:** [github.com/subsquid/pipes-sdk](https://github.com/subsquid/pipes-sdk)
 - **Squid SDK:** [github.com/subsquid/squid-sdk](https://github.com/subsquid/squid-sdk)
 - **Documentation:** [docs.sqd.dev](https://docs.sqd.dev)
 - **Portal API catalog:** [portal.sqd.dev/datasets](https://portal.sqd.dev/datasets)

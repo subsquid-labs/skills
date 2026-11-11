@@ -119,31 +119,9 @@ The upstream doc embeds an interactive converter inline at <https://docs.sqd.dev
 | 289_819_150  | 317_617_480   |
 | 303_262_650  | 325_000_000   |
 
-## Required from 2026-05-19 12:00 UTC: API key on v2 gateway
+## Staying on the v2 gateway
 
-Self-hosted squids that still hit the v2 archive must authenticate from May 19, 2026 12:00 UTC. Cloud-hosted squids are unaffected. Get a key at <https://portal.sqd.dev/app>.
-
-```bash
-npm i @subsquid/solana-stream@^0.5.0
-```
-
-```diff
-- .setGateway('https://v2.archive.subsquid.io/network/solana-mainnet')
-+ .setGateway({
-+   url: 'https://v2.archive.subsquid.io/network/solana-mainnet',
-+   apiKey: process.env.SQD_API_KEY,
-+ })
-```
-
-```bash
-echo 'SQD_API_KEY=...' >> .env
-echo 'SQD_API_KEY=your_api_key_here' >> .env.example
-echo '.env' >> .gitignore
-```
-
-`apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/solana-stream@0.5.0`; earlier 0.x versions reject the field.
-
-Reference docs: <https://docs.sqd.dev/announcements/gateway-api-keys> · <https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-api-key>
+The Solana v2 gateway has served only the last 30 days of data since 2026-06-01 and is scheduled for removal ([announcement](https://docs.sqd.dev/announcements/gateway-deprecations-may-2026)). A gateway API key (`@subsquid/solana-stream@^0.5.0`, `setGateway({ url, apiKey })`) keeps a self-hosted squid running on that window for a short while; it does not bring the history back. Migrate to Portal.
 
 ## Reference template
 

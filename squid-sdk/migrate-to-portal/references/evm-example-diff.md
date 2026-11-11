@@ -203,31 +203,9 @@ If the handler does direct RPC calls, also add:
  })
 ```
 
-## Required from 2026-05-19 12:00 UTC: API key on v2 gateway
+## Staying on the v2 gateway
 
-Self-hosted squids that still hit the v2 archive must authenticate from May 19, 2026 12:00 UTC. Cloud-hosted squids are unaffected. Get a key at <https://portal.sqd.dev/app>.
-
-```bash
-npm i @subsquid/evm-processor@^1.30.0
-```
-
-```diff
-- .setGateway('https://v2.archive.subsquid.io/network/ethereum-mainnet')
-+ .setGateway({
-+   url: 'https://v2.archive.subsquid.io/network/ethereum-mainnet',
-+   apiKey: process.env.SQD_API_KEY,
-+ })
-```
-
-```bash
-echo 'SQD_API_KEY=...' >> .env
-echo 'SQD_API_KEY=your_api_key_here' >> .env.example
-echo '.env' >> .gitignore
-```
-
-`apiKey` defaults to `SQD_API_KEY` from the environment when omitted on the call. The `apiKey` field was added to `GatewaySettings` in `@subsquid/evm-processor@1.30.0`; earlier versions reject the field.
-
-Reference docs: <https://docs.sqd.dev/announcements/gateway-api-keys> · <https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-api-key>
+Self-hosted squids that still read the v2 gateway need an API key. The package version, the `setGateway({ url, apiKey })` form and the environment setup are in `v2-auth.md`.
 
 ## Reference templates
 

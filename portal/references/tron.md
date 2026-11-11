@@ -466,7 +466,7 @@ The `asset` filter matches the raw hex `asset_name` verbatim (`31303035313537` =
 
 ## MCP Tool Availability
 
-Portal MCP server 0.8.5 (checked 2026-09-10) exposes two Tron tools:
+Portal MCP server 0.8.5 (checked 2026-11-11) exposes two Tron tools:
 
 | Tool | Covers | Notes |
 |---|---|---|
