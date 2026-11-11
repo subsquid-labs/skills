@@ -18,11 +18,13 @@ Reference for running the Pipes SDK BigQuery target in production: GCP prerequis
 
 ## Version Grounding
 
-Everything below was read on **2026-09-03** from the published `@subsquid/pipes@1.0.0-beta.6` tarball — `src/targets/bigquery/*.ts` plus the shipped `dist/targets/bigquery/*.d.ts`. On that date npm `latest` was `1.0.0-beta.6` and the npm `beta` tag was `1.0.0-beta.4`. Every claim here is verified against beta.6 only; where a sibling reference documents an earlier beta, prefer the version each file names and re-read `npm view @subsquid/pipes dist-tags --json` before pinning.
+Everything below was checked on **2026-11-11** against `@subsquid/pipes@1.0.0-beta.11`: the nine files under `src/targets/bigquery/` in the published tarball, which are identical to the repository at tag `pipes-v1.0.0-beta.11`. On that date npm `latest` was `1.0.0-beta.11` and the npm `beta` tag was `1.0.0-beta.4`; re-read `npm view @subsquid/pipes dist-tags --json` before pinning.
 
-The upstream `main` branch is older (`1.0.0-beta.1`) and is the only place carrying BigQuery tests. Seven of the nine files under `src/targets/bigquery/` (`tables.ts`, `bigquery-store.ts`, `bigquery-state.ts`, `bigquery-tracker.ts`, `utils.ts`, `index.ts`, `integration-helpers.ts`) are byte-identical between the two trees, and `errors.ts` differs only in a comment. The one behavioural difference is in `bigquery-target.ts`: beta.6 normalizes the block timestamp through `blockTimestampSeconds()` before observing the lag metric instead of trusting `next.timestamp` verbatim. The beta.1 tests therefore describe beta.6 behaviour, and nothing below contradicts them.
+The reference was first written from the beta.6 tarball. Between beta.6 and beta.11 three files changed (`git diff pipes-v1.0.0-beta.6 pipes-v1.0.0-beta.11 -- packages/pipes/src/targets/bigquery`): `bigquery-state.ts` pages fork history in pages of `maxRows`, `bigquery-store.ts` reports stalled appends, transport errors and retried calls through the pipe's logger, and `bigquery-target.ts` hands the store that logger. `tables.ts`, `bigquery-tracker.ts`, `utils.ts`, `index.ts`, `errors.ts` and `integration-helpers.ts` are unchanged.
 
-The published tarball ships `dist`, `src` (tests excluded), `package.json`, `README.md` and `LICENSE` — **no examples, no CHANGELOG, no MIGRATION.md**. Any BigQuery example you find in the upstream repo is beta.1-era, and several of its comments are wrong for beta.6 (see [Stale comments in the source](#stale-comments-in-the-source)).
+The upstream `main` branch is at the same version and carries the BigQuery tests next to the source (`bigquery-state.test.ts`, `bigquery-target.test.ts`, `bigquery-target.lifecycle.test.ts` and two integration tests gated behind `BIGQUERY_TEST_PROJECT`).
+
+The published tarball ships `dist`, `src` (tests excluded), `package.json`, `README.md` and `LICENSE`, so it has no examples and no changelog. The repository's BigQuery example is `docs/examples/evm/16.bigquery.example.ts`; one of its comments is wrong for the current code (see [Stale comments in the source](#stale-comments-in-the-source)).
 
 ## What This Target Is For
 
@@ -34,10 +36,10 @@ The published tarball ships `dist`, `src` (tests excluded), `package.json`, `REA
 
 ### Packages
 
-Both Google packages are **optional peer dependencies pinned to exact versions** in beta.6, so nothing installs them for you:
+Both Google packages are **optional peer dependencies pinned to exact versions** in beta.11, so nothing installs them for you:
 
 ```bash
-pnpm add @subsquid/pipes@1.0.0-beta.6 \
+pnpm add @subsquid/pipes@1.0.0-beta.11 \
          @google-cloud/bigquery@8.3.0 \
          @google-cloud/bigquery-storage@5.1.0
 ```
@@ -48,7 +50,7 @@ pnpm add @subsquid/pipes@1.0.0-beta.6 \
 
 `@subsquid/pipes/targets/bigquery` is the **only** specifier that resolves. The root `@subsquid/pipes` entry re-exports `./core` only, and `package.json` `exports` has no wildcard, so deep paths such as `@subsquid/pipes/targets/bigquery/tables.js` are unresolvable.
 
-Exported (beta.6 `index.ts`): `bigqueryTarget`, `BigQueryWriter`, `BigQuerySyncState`, `BigQueryTableRegistry`, `BIGQUERY_ERROR_CODES`, `BigQueryTargetError`, `ensureTrackedTable`, `partitioningWithDefaults`, `syncTableDdl`, `trackedTableDdl`, plus the types `BigQueryClients`, `BigQuerySettings`, `BigQueryStateOptions`, `PartitioningOptions`, `PartitioningSetting`, `SyncTableLocation`, `TrackedTable`.
+Exported (beta.11 `index.ts`): `bigqueryTarget`, `BigQueryWriter`, `BigQuerySyncState`, `BigQueryTableRegistry`, `BIGQUERY_ERROR_CODES`, `BigQueryTargetError`, `ensureTrackedTable`, `partitioningWithDefaults`, `syncTableDdl`, `trackedTableDdl`, plus the types `BigQueryClients`, `BigQuerySettings`, `BigQueryStateOptions`, `PartitioningOptions`, `PartitioningSetting`, `SyncTableLocation`, `TrackedTable`.
 
 Named in public signatures but **not** exported, so you cannot name them in your own types: `CommitTableStats` (the return of `commitBatch()` / `getBufferStats()`), `BigQueryStoreOptions` (third ctor arg of `BigQueryWriter`), `ProtoWriterFactory`, `TrackedTableLocation` (ctor arg of `BigQuerySyncState`), and everything in `utils.ts`. This only bites when hand-constructing the writer or state, or typing a `commitBatch()` result — a pipeline author needs `bigqueryTarget` and `TrackedTable` and nothing else.
 
@@ -69,7 +71,7 @@ Both APIs must be enabled on the project.
 
 ### Credentials
 
-The target never touches credentials. It constructs Google clients with a `projectId` and nothing else, so both clients fall through to the Google auth library's Application Default Credentials chain. Credential resolution is Google client-library behaviour; the beta.6 source asserts nothing about it.
+The target never touches credentials. It constructs Google clients with a `projectId` and nothing else, so both clients fall through to the Google auth library's Application Default Credentials chain. Credential resolution is Google client-library behaviour; the SDK source asserts nothing about it.
 
 - **Local development:** `gcloud auth application-default login`, then pass only `projectId`.
 - **Service-account key file:** set `GOOGLE_APPLICATION_CREDENTIALS` to the JSON key path. Never commit the key; never inline it in the pipe.
@@ -86,7 +88,7 @@ Derive the permission set from what the target actually calls:
 | `getMetadata` on each tracked table at startup | Tables read | Schema validation before the first batch |
 | `createWriteStream` + `appendRows` on every tracked table and the sync table | Storage Write API | The entire write path |
 | `DELETE` DML — fork cleanup, crash recovery, sync retention | Query job, DML | Reorg rollback and WAL trim |
-| `SELECT` — sync cursor read, 1000-row fork paging, orphan probes | Query job | Resume and fork resolution |
+| `SELECT` — sync cursor read, fork paging (`maxRows` rows per page), orphan probes | Query job | Resume and fork resolution |
 
 > **These role names are Google-side, not read from the SDK.** Check them against Google's current BigQuery IAM reference before granting.
 >
@@ -98,7 +100,7 @@ Derive the permission set from what the target actually calls:
 
 ### Dataset location
 
-The target never sets a `location` on any client, query job, or table — grep the beta.6 BigQuery sources and there is none. Every job therefore inherits the dataset's location, which is fixed at dataset creation and cannot be changed afterwards.
+The target never sets a `location` on any client, query job, or table — grep the beta.11 BigQuery sources and there is none. Every job therefore inherits the dataset's location, which is fixed at dataset creation and cannot be changed afterwards.
 
 Decide before you create the dataset:
 
@@ -348,7 +350,7 @@ There is exactly one choice: which INT64 column carries the block height. The ge
 PARTITION BY RANGE_BUCKET(`block_number`, GENERATE_ARRAY(0, 100000000, 10000))
 ```
 
-There is no time-partitioning code path in beta.6. The column is rewritten to `INT64 NOT NULL` in both the DDL and the proto descriptor. The `NOT NULL` is load-bearing: SQL three-valued logic means a `NULL` block number never matches the fork `DELETE` predicate, so such a row would survive every reorg cleanup forever.
+There is no time-partitioning code path in beta.11. The column is rewritten to `INT64 NOT NULL` in both the DDL and the proto descriptor. The `NOT NULL` is load-bearing: SQL three-valued logic means a `NULL` block number never matches the fork `DELETE` predicate, so such a row would survive every reorg cleanup forever.
 
 > **Only the auto-create branch checks that the column is in your `schema`.** `assertSchemaIncludesPartitionColumn` runs inside `trackedTableDdl`, which is reached only on the `getMetadata` 404. Against a table that already exists — the normal case after the first deploy — a `blockNumberColumn` missing from `schema` passes every startup check: the partition and INT64/NOT-NULL assertions read the *live* table, and `assertSchemaMatches` iterates only the columns you declared. The proto descriptor is then built without that column and every batch fails at the first commit, after the WAL pre-commit row is already durable — as **E2213** when BigQuery reports the rejection per row, otherwise as a raw proto-descriptor error carrying no `E22xx` code. Declare it.
 
@@ -477,7 +479,7 @@ Before writing a rollback hook:
 - **The sync table is not rewritten on a fork.** Two new rows are appended; prior COMMITTED rows above the safe cursor stay.
 - **Both rollback WAL rows persist `finalized: undefined` and an empty `rollbackChain`.** A restart immediately after a reorg resumes with `finalized: null`; the source rebuilds its watermark from the Portal, so this is not corruption, but the persisted finalized floor is lost. **The empty chain also makes rollback and recovery rows inert for fork resolution** — `resolveForkCursor` skips any record with an empty `rollbackChain`, so a second fork resolves only against older COMMITTED rows, whose chains may describe blocks the first rollback already deleted. Effective fork depth is the retained COMMITTED history, not the retained row count.
 - **`upper` is `max(canonicalBlocks[].number)`.** If it is below the persisted cursor the target throws `PortalContractViolationError` (E1004) rather than deleting a partial range.
-- **Fork depth is bounded by retained sync history.** Fork resolution pages committed rows newest-first, 1000 at a time, and `cleanupOldRows` keeps only `maxRows` (default 10_000) per id. Exceed that and the fork resolves to `null` and the pipe dies with `ForkCursorMissingError` (E1003) — a retention problem that presents as a fork bug, and one that needs a [manual rewind](#manual-rewind) to clear.
+- **Fork depth is bounded by retained sync history and by the finalized floor.** Fork resolution reads every committed row for the id, newest-first, in pages of `maxRows`; `cleanupOldRows` keeps only `maxRows` (default 10_000) per id, so a fork normally costs one query. The search never goes below the highest finalized block those rows persisted, because finalized data is not rolled back. A fork deeper than either bound resolves to `null` and the pipe dies with `ForkCursorMissingError` (E1003) — a retention problem that presents as a fork bug, and one that needs a [manual rewind](#manual-rewind) to clear.
 
 ### Crash recovery
 
@@ -532,7 +534,9 @@ Transient means gRPC 4 (DEADLINE_EXCEEDED), 8 (RESOURCE_EXHAUSTED), 10 (ABORTED)
 
 Fatal and pipe-stopping: every `E2201`–`E2213`, plus `INVALID_ARGUMENT` / `NOT_FOUND` / schema mismatch from the API. **A fatal error on the commit path is a crash loop, not a one-off.** The batch never reaches COMMITTED, so every restart re-runs the recovery `DELETE`, re-fetches the same blocks and fails identically. Stop the supervisor and fix the schema or the row values; restarting cannot clear it. Each restart also opens a new Committed write stream per tracked table — streams are never finalized and the target never calls `close()` — so a loop left running burns write-stream quota and can escalate a schema bug into `RESOURCE_EXHAUSTED` on the same tables.
 
-Non-fatal by design: `cleanupOldRows` failures are logged as a warning and swallowed; a duplicate transient gRPC error redelivered as a connection `'error'` event is silenced by a no-op listener so it cannot kill the process.
+Non-fatal by design: `cleanupOldRows` failures are logged as a warning and swallowed; a transient gRPC error that the storage client delivers a second time as a connection `'error'` event is caught by a listener so it cannot kill the process. The listener logs it as the warning `write stream for <table> reported a transport error`; the client reconnects on the next `appendRows` attempt.
+
+A retried call that then succeeds logs one warning, `<call> succeeded after N retries`, where `<call>` is `appendRows(<table>, offset=<n>)`, `createWriteStream(<table>)`, `createQueryJob` or `query`. A call that exhausts the budget logs nothing there and throws.
 
 **Close failures are not swallowed on the path that runs.** The best-effort try/catch around `writer.close()` and `connection.close()` lives in `BigQueryWriter.close()`, which the target never calls. The target's own `finally` calls `writer.close()` on the `WriterClient` unguarded, so a throw there propagates and — being in a `finally` — replaces the error that actually ended the write loop.
 
@@ -541,12 +545,16 @@ Non-fatal by design: `cleanupOldRows` failures are logged as a warning and swall
 | Signal | Name | Notes |
 |--------|------|-------|
 | Metric | `sqd_bigquery_commit_duration_seconds` | Times only the parallel `AppendRows` phase, not the WAL bracket |
-| Metric | `sqd_bigquery_block_to_commit_lag_seconds` | beta.6 normalizes the block timestamp first; an unusable one is skipped, not observed as garbage |
+| Metric | `sqd_bigquery_block_to_commit_lag_seconds` | The block timestamp is normalized first; an unusable one is skipped, not observed as garbage |
 | Metric | `sqd_bigquery_append_errors_total{kind}` | `kind` is one of `not_found`, `invalid_argument`, `resource_exhausted`, `transient`, `unknown`. Counts WAL pre-commit, data commit and WAL post-commit errors; `onData` throws are excluded as user-code errors |
 | Log (info) | `committed batch: N rows / X across K tables, blocks A → B` | Proto-encoded row bytes — see [What the target's own writes cost](#what-the-targets-own-writes-cost) before treating it as a billing figure |
 | Log (debug) | `in-flight batch: …` | Emitted before the commit |
 | Log (warn) | `Crash recovery (id=…): previous run left an unfinished write/rollback` | The recovery path fired |
 | Log (warn) | `Sync cleanup failed (non-fatal)` | Retention is not running; the sync table is growing |
+| Log (warn) | `appendRows(<table>, offset=<n>) has not returned after 15s` | One append attempt has been in flight for 15 s. The gRPC stream was probably dropped without an error; `getResult()` has no deadline of its own. Followed by `appendRows(…) returned after <duration>` (info) if it completes |
+| Log (warn) | `write stream for <table> reported a transport error` | The connection emitted an `'error'` event. Not fatal on its own |
+| Log (warn) | `<call> succeeded after N retries` | A transient error was retried and cleared. Repeated lines point at quota or network pressure |
+| Log (warn) | `stalled: processing blocks A → B for <duration>` | The pipe-level watchdog (120 s) covering `onData` and the commit; see [STREAM_RESILIENCE.md](STREAM_RESILIENCE.md#stalled-responses-and-the-stall-watchdog) |
 
 **Reorgs are not instrumented.** There is no fork metric and no fork log line: `tracker.fork()` returns per-table deleted-row counts and the target discards them. `sqd_bigquery_append_errors_total` wraps only the WAL pre-commit, the data commit and the WAL post-commit, so a failing fork `DELETE` or recovery `DELETE` increments nothing. The only in-band evidence that a reorg occurred is your own `onBeforeRollback` hook on the fork path, or the `Crash recovery (id=…)` warning on the recovery path. Log the cursor in `onBeforeRollback` if you want a reorg record, and alert on process exits rather than on a fork counter.
 
@@ -571,9 +579,9 @@ Do not quote these as behaviour:
 - `bigquery-store.ts`'s `commitBatch` comment lists `finalize` and `batchCommitWriteStream` among the per-table operations. Neither is ever called.
 - `bigquery-state.ts` says `getCursor` may run before `onStart`. In this target it never does.
 - `bigquery-store.ts` states three different `AppendRows` size limits (10 MB, 16 MiB, 20 MB). **16 MiB is the one actually enforced.**
-- `bigquery-store.ts` and `internal/function.ts` both put the retry budget at "~30 s". The loop runs 9 attempts with 8 exponential sleeps — ~64 s on average, up to ~96 s. See [Retry policy](#retry-policy).
+- `bigquery-store.ts` puts the retry budget at "~30 s". The loop runs 9 attempts with 8 exponential sleeps — ~64 s on average, up to ~96 s. See [Retry policy](#retry-policy).
 - `tables.ts` carries a hardcoded "$5+ per call" figure for an unpartitioned fork `DELETE`. The direction is right; the number is not current pricing.
-- The beta.1 repo example says batches commit "via Pending streams". beta.6 uses **Committed** streams.
+- The repo example `docs/examples/evm/16.bigquery.example.ts` says batches commit "via Pending streams". The target uses **Committed** streams.
 
 ## Querying What You Wrote, Affordably
 
@@ -660,9 +668,9 @@ Three distinct billing surfaces:
 
 1. **Row ingest via the Storage Write API, not load jobs.** Load jobs are free; the Storage Write API is billed by bytes ingested. This is a deliberate trade for immediate visibility; the per-stream offsets are an in-process retry mechanism, not a cross-restart guarantee. The `committed batch:` log line reports the exact proto-encoded size of the **data rows** — not the billed size. It excludes the AppendRows request envelope (writer schema, descriptors, offsets) and the two WAL rows per batch. Check Google's current Storage Write API pricing for any per-row or per-request billing minimum before extrapolating: blockchain rows are small, so a minimum would multiply the ingest bill well past that number. Use the log line for throughput and relative sizing; use the billing export for cost.
 2. **Two extra single-row WAL appends per batch**, through the same billed path. Negligible in bytes but per *batch*, so a high batch rate means a high request count. Larger batches amortize it — within the memory ceiling described in [the WAL bracket](#the-per-batch-wal-bracket).
-3. **Query jobs** — fork `DELETE`s, recovery `DELETE`s, the sync cleanup `DELETE` (by default every 25 commits, plus once per process start), the startup `SELECT *` on sync, and 1000-row fork paging. The orphan probes (`SELECT TRUE AS has_row FROM t LIMIT 1`) reference no columns, so BigQuery normally bills them at zero bytes — that is Google-side billing behaviour the target neither controls nor verifies, so dry-run one for your project rather than assuming.
+3. **Query jobs** — fork `DELETE`s, recovery `DELETE`s, the sync cleanup `DELETE` (by default every 25 commits, plus once per process start), the startup `SELECT *` on sync, and fork paging (one `SELECT *` of up to `maxRows` sync rows per fork). The orphan probes (`SELECT TRUE AS has_row FROM t LIMIT 1`) reference no columns, so BigQuery normally bills them at zero bytes — that is Google-side billing behaviour the target neither controls nor verifies, so dry-run one for your project rather than assuming.
 
-> **No job the target submits sets `maximumBytesBilled`, and beta.6 exposes no setting for it.** A hard ceiling on the target's own jobs must come from a project- or user-level custom quota.
+> **No job the target submits sets `maximumBytesBilled`, and beta.11 exposes no setting for it.** A hard ceiling on the target's own jobs must come from a project- or user-level custom quota.
 
 ### Verification and consistency queries
 
@@ -705,7 +713,7 @@ Anything above `cursor_block` is uncommitted data that the next clean start remo
 |------------|----------|
 | `store.insert({ table, values, format })` — async, ships immediately | `store.insert(table, rows)` — synchronous, buffers until the target commits after `onData` |
 | `onRollback({ reason: 'recovery' \| 'fork', store, safeCursor })` | Automatic per-table bounded `DELETE`s, plus notification-only `onBeforeRollback` / `onAfterRollback` — fork path only |
-| `store.removeAllRows`, `removeAllRowsByQuery` | Not supported. Reorg cleanup is the target's own range `DELETE` |
+| `store.removeRowsAfter` (and the deprecated `removeAllRows`), `removeAllRowsByQuery` | Not supported. Reorg cleanup is the target's own range `DELETE` |
 | `store.ensureRollbackIndex({ table })` | Not supported. Range partitioning on `blockNumberColumn` is the equivalent, and it is mandatory |
 | `store.executeFiles(dir)` for `onStart` DDL | Not supported. Use `store.query(sql)` from `onStart` |
 | `settings.database` (defaults from the client) | `dataset`, required, and it must already exist |
@@ -739,7 +747,7 @@ Every `E22xx` is a `BigQueryTargetError extends PipeError`, carries `name = 'Tar
 | `IN_FLIGHT state has NULL range_low/range_high; cannot recover` | E2211 | Sync row corrupted or hand-edited | Inspect the sync table for that id. Recovery cannot infer the range |
 | ``has no rows for id='…', but tracked table `…` still holds data`` | E2212 | Sync rows cleared, or the cursor key or `settings.state.table` changed, while data remains | Either restore the id (`settings: { state: { id: '…' } }`), or truncate the tracked tables listed in the message for a genuine fresh run |
 | `BigQuery rejected N row(s) in AppendRows for … at offset …` | E2213 | Per-row rejection: proto/schema mismatch, NOT NULL violation, value out of range | Compare the live table schema against your declaration. A live `REQUIRED` column missing from `tables[].schema`, a `blockNumberColumn` missing from it, and a `BIGNUMERIC` fed an overflowing integer all land here. The rejected chunk was not written, but earlier chunks of the same table and every table committed in parallel **were** — the next clean start's recovery `DELETE` removes them |
-| `A blockchain fork was detected, but the target resolveFork() did not return a new cursor` | E1003 | Reorg deeper than the retained sync history (class `ForkCursorMissingError`, `name = 'ForkHandling'`) | Raising `maxRows` prevents a recurrence; it does not resolve the live incident — follow [Manual rewind](#manual-rewind) |
+| `A blockchain fork was detected, but the target resolveFork() did not return a new cursor` | E1003 | Reorg deeper than the retained sync history, or reaching below the persisted finalized block (class `ForkCursorMissingError`, `name = 'ForkHandling'`) | Raising `maxRows` prevents a recurrence; it does not resolve the live incident — follow [Manual rewind](#manual-rewind) |
 | `Portal invariant violated: max(canonicalBlocks).number=… is below the persisted cursor` | E1004 | Portal returned a fork range below the stored cursor | Target refuses rather than deleting a partial range. Check the Portal dataset and the pipe `id` |
 | `Not found: Dataset <project>:<dataset>` | — | The dataset does not exist | Create it. The target never does |
 | `Access Denied: … User does not have permission` (403) | — | Missing `dataEditor` on the dataset or `jobUser` on the project | See [Minimum IAM](#minimum-iam) |
@@ -747,11 +755,12 @@ Every `E22xx` is a `BigQueryTargetError extends PipeError`, carries `name = 'Tar
 | gRPC `8 RESOURCE_EXHAUSTED` / HTTP 429, repeatedly | — | Quota or rate limit; 9 attempts over ~32–96 s of backoff, then fatal | Identify the family from the failing call — write streams, AppendRows throughput, or DML — because the lever differs. See [Which quotas this target pressures](#which-quotas-this-target-pressures) |
 | gRPC `3 INVALID_ARGUMENT` on append | — | Fatal, never retried; schema or descriptor mismatch | Same diagnosis path as E2213 |
 | `Sync cleanup failed (non-fatal)` (warning, repeatedly) | — | Retention `DELETE` failing silently | The sync table is growing and the startup `SELECT *` is getting more expensive. Fix the DML permission or quota |
+| `appendRows(…) has not returned after …` (warning) | — | A dropped Storage Write stream; the append neither succeeded nor failed | If no `returned after` line follows, restart the pipe. Recovery deletes the unfinished batch range and replays it |
 | `Sync table … not found; creating it.` (debug, first run) | — | Expected on a brand-new pipe | Ignore |
 
 ## Related
 
-- [SDK_FEATURES.md](./SDK_FEATURES.md#bigquery) — the BigQuery config shape and first example; also [cursor keying](./SDK_FEATURES.md#cursor-keying--upgrading-to-alpha15) and [Pub/Sub → BigQuery CDC](./SDK_FEATURES.md#google-pubsub-beta2-current-protocol-in-beta4)
+- [SDK_FEATURES.md](./SDK_FEATURES.md#bigquery) — the BigQuery config shape and first example; also [cursor keying](./SDK_FEATURES.md#cursor-keying--upgrading-to-alpha15) and [Pub/Sub → BigQuery CDC](./SDK_FEATURES.md#google-pubsub-beta2)
 - [SCHEMA_GUIDE.md](./SCHEMA_GUIDE.md) — the ClickHouse-side type mapping the BIGNUMERIC/STRING rule mirrors
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — Portal, ABI and Node-level failures upstream of the target
 - [STREAM_RESILIENCE.md](./STREAM_RESILIENCE.md) — keeping a long-running indexer alive

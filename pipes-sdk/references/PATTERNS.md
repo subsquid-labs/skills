@@ -60,6 +60,7 @@ Consult this documentation when you need to:
 - Filter by indexed parameters at Portal
 - Dramatically reduce bandwidth
 - **Use when**: High-volume contracts, known addresses
+- Two entries for the same event in one decoder must filter an indexed parameter on value lists that share no value; otherwise the decoder refuses to start with E0004. Put overlapping filters in separate `evmEventDecoder()` outputs (pattern 5). See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#e0004-two-evm-decoder-entries-match-the-same-log)
 
 #### 6. Factory Event Filtering
 - Filter factory creation events
@@ -79,7 +80,7 @@ Consult this documentation when you need to:
 
 #### 9. Memory Target (internal / testing only)
 - In-memory storage with rollback handling
-- **Not publicly importable**: `createMemoryTarget` exists in the SDK source but is **not** exported from the published package (still true in `1.0.0-beta.4`). There is no `./targets/memory` export and it is not re-exported from the root index, so application code cannot import it. (The beta CLI no longer offers a `memory` sink option at all.)
+- **Not publicly importable**: `createMemoryTarget` exists in the SDK source but is **not** exported from the published package (still true in `1.0.0-beta.11`). There is no `./targets/memory` export and it is not re-exported from the root index, so application code cannot import it. (The beta CLI no longer offers a `memory` sink option at all.)
 - **Use when**: SDK-internal tests only — for a lightweight external option, use a custom target instead
 
 #### 10. RPC Latency Monitoring
@@ -416,7 +417,7 @@ for await (const { data } of stream) {
 
 **Symptoms**: Duplicate records after reorg
 
-**Solution**: Implement fork handler to handle rollbacks
+**Solution**: Implement fork handler to handle rollbacks. On the ClickHouse target that is an `onRollback` hook calling `store.removeRowsAfter(safeCursor, { tables })`; see [SDK_FEATURES.md](SDK_FEATURES.md#clickhouse).
 
 ### Issue 6: Events Not Decoded Correctly
 
@@ -611,7 +612,7 @@ sqlite3 <project>/*.sqlite "SELECT COUNT(*) FROM factory_contracts" 2>/dev/null 
 - PostgreSQL (use drizzleTarget)
 
 ### Memory Target
-**Not publicly importable; still true in 1.0.0-beta.4** (SDK-internal / testing only; see pattern #9). For a lightweight external store, use a custom target. Characteristics of the internal target:
+**Not publicly importable; still true in 1.0.0-beta.11** (SDK-internal / testing only; see pattern #9). For a lightweight external store, use a custom target. Characteristics of the internal target:
 
 **Use when**:
 - SDK-internal testing

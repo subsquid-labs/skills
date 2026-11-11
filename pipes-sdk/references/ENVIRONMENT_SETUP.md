@@ -275,12 +275,12 @@ npx tsc
 
 ```bash
 # Test CLI availability
-pnpx @subsquid/pipes-cli@1.0.0-beta.2 --version
+pnpx @subsquid/pipes-cli@1.0.0-beta.3 --version
 ```
 
 **Note**: No local SDK installation needed - CLI is used via pnpx
 
-**Manual (non-CLI) setups**: the SDK is in **1.0.0 beta**. On 2026-09-10 npm `latest` and the CLI-generated `"^1.0.0-beta.1"` range installed `1.0.0-beta.6`, while the `beta` tag still pointed to `1.0.0-beta.4`. Pin beta.4 explicitly for its Pub/Sub signals and lag metrics; otherwise prefer an exact pin or the generated caret range, and recheck with `npm view @subsquid/pipes dist-tags --json`. Do **not** pin the floating `"alpha"` dist-tag: it resolved to `1.0.0-alpha.25` on that date, and floating tags make builds non-reproducible. A plain `"^1.0.0"` excludes prereleases and resolves to nothing until stable 1.0.0 is published. The CLI itself is the remaining dist-tag trap: `@subsquid/pipes-cli@latest` is the old `1.0.0-alpha.1`; always pin `@subsquid/pipes-cli@1.0.0-beta.2` (or `@beta`).
+**Manual (non-CLI) setups**: the SDK is in **1.0.0 beta**. On 2026-11-11 npm `latest` and the CLI-generated `"^1.0.0-beta.10"` range installed `1.0.0-beta.11`, while the `beta` tag still pointed to `1.0.0-beta.4`. Prefer an exact pin or the generated caret range, and recheck with `npm view @subsquid/pipes dist-tags --json`. Do **not** pin the floating `"beta"` or `"alpha"` dist-tags: `beta` lags `latest`, `alpha` resolved to `1.0.0-alpha.25` on that date, and floating tags make builds non-reproducible. A plain `"^1.0.0"` excludes prereleases and resolves to nothing until stable 1.0.0 is published. For the CLI, pin the exact version `@subsquid/pipes-cli@1.0.0-beta.3`. On 2026-11-11 its `latest` tag pointed to `1.0.0-beta.3`, but `beta` pointed to the older `1.0.0-beta.2` and `alpha` to `1.0.0-alpha.6`, so neither tag is a safe substitute (`npm view @subsquid/pipes-cli dist-tags --json`).
 
 ## Platform-Specific Notes
 
@@ -378,7 +378,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://portal.sqd.dev/d
 
 # Pipes CLI
 echo -n "Pipes CLI: "
-pnpx @subsquid/pipes-cli@1.0.0-beta.2 --version > /dev/null 2>&1 && echo "✅ Available" || echo "❌ Failed"
+pnpx @subsquid/pipes-cli@1.0.0-beta.3 --version > /dev/null 2>&1 && echo "✅ Available" || echo "❌ Failed"
 
 echo ""
 echo "=== Setup Complete ==="
@@ -517,7 +517,7 @@ docker run -d --name clickhouse -p 127.0.0.1:8123:8123 \
 # 4. Verify
 node --version
 docker ps
-pnpx @subsquid/pipes-cli@1.0.0-beta.2 --version
+pnpx @subsquid/pipes-cli@1.0.0-beta.3 --version
 
 # 5. Ready to build!
 ```

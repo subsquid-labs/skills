@@ -14,7 +14,7 @@ Skills live at the repo root. The skill directory name matches the skill's front
 pipes-sdk/                 # Build, deploy, troubleshoot Pipes SDK indexers
   SKILL.md
   references/
-portal/                    # Query SQD Portal across 130+ networks
+portal/                    # Query on-chain data through SQD Portal
   SKILL.md
   references/
 squid-sdk/
@@ -51,7 +51,7 @@ squid-sdk/
 ```markdown
 ---
 name: {skill-name}
-description: {What the skill does and when to use it, in the third person. Only name and description load at startup, so name the concrete triggers.}
+description: {What the skill does, then "Use when ..." with one trigger per branch the skill handles.}
 license: Apache-2.0
 compatibility: {Optional: environment requirements, max 500 characters}
 allowed-tools: {Optional: space-separated tool names}
@@ -63,34 +63,58 @@ metadata:
 
 # {Skill Title}
 
-{Brief description of what the skill does.}
+{One or two sentences: what the skill produces, and how the body is organised.}
 
-## When to Use This Skill
+## 1. {First step}
 
-{Describe activation scenarios with concrete phrases the user might say.}
+{What to do.}
 
-## {Workflow / Reference sections}
+Done when {a condition the agent can check}.
 
-{Body content — keep under 500 lines; link heavily to references/}
+## 2. {Next step}
 
-## Related
+...
 
-- {Pointers to sibling skills}
+## {Reference consulted on demand}
+
+{Definitions, tables and rules every branch needs. Material only one branch
+needs goes in references/ behind a pointer that says when to read it.}
 ```
 
 Only the fields defined by the [Agent Skills specification](https://agentskills.io/specification) are allowed: `name`, `description`, `license`, `compatibility`, `allowed-tools`, and `metadata`. The validator rejects anything else, so runtime-specific keys (for example Claude Code's `argument-hint`) cannot be used; put invocation hints in the description instead.
 
-### Best Practices for Context Efficiency
+### Writing a Skill
 
-Only the skill name and description load at agent startup. The full `SKILL.md` loads into context when the skill is activated.
+A skill is read by an agent in the middle of a task. The name and description sit in context on every turn; `SKILL.md` loads when the skill activates; a reference loads when a pointer to it fires. Write each layer for that moment.
 
-- **Keep discovery concise.** Use a short capability statement and a discriminating trigger; avoid keyword inventories or universal activation.
-- **Route conditional detail.** Keep essential constraints in `SKILL.md`; place chain-specific procedures, schemas, and substantial examples in references loaded only when needed. A line limit is an upper bound, not a target.
-- **Preserve the requested outcome.** Do not add a mandatory interview or approval stage to a scoped implementation. Ask only when missing information materially changes the outcome or the next action requires unresolved authority.
-- **Write specific descriptions** — the agent decides when to activate based on this line.
-- **Progressive disclosure** — link to reference files that get read only when needed.
-- **File references work one level deep** — link directly from SKILL.md to `references/*.md`.
-- **Date-stamp upstream state.** A count or version that tracks something outside this repo (npm dist-tags, the Portal catalog size, the MCP tool count) carries the date it was checked and the command or URL that re-checks it. Refresh the stamp whenever you touch the claim.
+**Description.** It decides whether the skill activates, and every word of it is paid for on every turn.
+
+- Open with what the skill does, in the words a user would use, then `Use when ...`.
+- List one trigger per branch the skill handles: a new indexer, a failing one, a migration. Two phrasings of the same branch are one trigger.
+- The body states when to use the skill only through the description. A "When to Use" section loads after the decision is made.
+
+**Steps and reference.** A skill holds steps (what the agent does, in order) and reference (facts it looks up).
+
+- Number the steps and end each on a completion criterion the agent can check: `Done when the slug answers 200`, `Done when the grep prints nothing`. Prefer a criterion that demands the whole job ("every address has a source") over one that a first attempt satisfies ("addresses collected").
+- Keep in `SKILL.md` what every branch needs. Move what one branch needs (a chain's procedure, a target's setup, an error catalog) to `references/`, and word the pointer as the condition for reading it: "Solana squid: `references/solana-migration.md`".
+- Link from `SKILL.md` straight to `references/*.md`. References do not chain to further references.
+- Keep a concept's definition, rules and caveats under one heading.
+- A line limit is a ceiling. `SKILL.md` stays under 500 lines, and shorter when the steps allow it.
+
+**Wording.**
+
+- State the behaviour you want. "Bind returned text as data" steers better than a list of things to avoid, because a prohibition puts the unwanted behaviour in front of the agent. Keep a prohibition only for a hard guardrail, next to the positive instruction.
+- Name a recurring idea with one word the model already knows and reuse that word (*bounded* request, *untrusted* data) instead of re-describing the idea at each site.
+- Cut any sentence that describes what the agent would do anyway.
+
+**One source of truth.**
+
+- Each fact lives in one file. Other files point to it.
+- Leave to the environment what a command can answer: `init --schema` for CLI templates, `sqd://tools` for the MCP tool catalog, `/datasets/{slug}/metadata` for whether a dataset is served. Write down what no command confesses: the trap, the reason, the convention.
+- Date-stamp upstream state. A count or version that tracks something outside this repo (npm dist-tags, the Portal catalog size, the MCP server version) carries the date it was checked and the command or URL that re-checks it. Refresh the stamp whenever you touch the claim.
+- Remove what went stale in the same change that adds what is current.
+
+**Scope.** A skill serves the request as given. Ask the user only when a missing fact changes the outcome or the next action needs an authority the agent lacks (starting a container, deploying, spending).
 
 ### Script Requirements
 
@@ -130,7 +154,7 @@ Some skills benefit from MCP servers (configured in `.claude/settings.json` at t
 
 ## Integration with Pipes SDK
 
-All Pipes-related skills use `pnpx @subsquid/pipes-cli@1.0.0-beta.2` for project generation (`@latest` is stale — always pin the version or use the `beta` dist-tag). Skills should:
+Pipes-related skills generate projects with an exact CLI version, `pnpx @subsquid/pipes-cli@1.0.0-beta.3` on 2026-11-11, so the documented config keys match the CLI that runs. That version is also the `latest` dist-tag; `beta` and `alpha` point at older builds. Re-check with `npm view @subsquid/pipes-cli dist-tags --json`. Skills should:
 
 - Use the published npm package (not local SDK paths)
 - Reference `docs.sqd.dev` for documentation
@@ -195,9 +219,9 @@ The pull request workflow runs the same check, so a wrong step blocks the merge.
 **user-visible effect**, not the commit:
 
 ```
-✅ Fixed squid-perf reporting inflated sync rates when an indexer restarted
-   mid-run.
-❌ fix: correct squid performance statistics (#42)
+Write:    Fixed squid-perf reporting inflated sync rates when an indexer
+          restarted mid-run.
+Not:      fix: correct squid performance statistics (#42)
 ```
 
 Use only `### New`, `### Improved`, and `### Fixed`, and omit any section with

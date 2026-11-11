@@ -15,11 +15,11 @@ To install every SQD skill, including these two nested ones, use `npx skills add
 
 ### migrate-to-portal
 
-Migrates an existing Squid SDK indexer, EVM or Solana, off the v2 gateway and onto the Portal data source. Mirrors the official guide ([Migrate a squid to Portal](https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-to-portal)) and fills in gaps the docs miss:
+Migrates an existing Squid SDK indexer, EVM or Solana, off the v2 gateway and onto the Portal data source. `SKILL.md` holds the steps both chains share (pre-flight, hot-block support, verification, re-sync) and sends the agent to one reference per chain. It follows the official guide ([Migrate a squid to Portal](https://docs.sqd.dev/en/sdk/squid-sdk/evm/guides/migration/gateway-to-portal)) and adds what the guide leaves out:
 
-- EVM squids that must stay on a v2 gateway for now: the `setGateway({ url, apiKey })` step with `@subsquid/evm-processor@^1.30.0`, which reads `SQD_API_KEY` from the environment. API keys are mandatory for self-hosted gateway calls since **2026-05-19 12:00 UTC**, per [the announcement](https://docs.sqd.dev/announcements/gateway-api-keys); get one at <https://portal.sqd.dev/app>. Solana squids migrate to Portal directly.
+- EVM squids that must stay on a v2 gateway for now: the `setGateway({ url, apiKey })` step with `@subsquid/evm-processor@^1.30.0`, which reads `SQD_API_KEY` from the environment. API keys are mandatory for self-hosted gateway calls since **2026-05-19 12:00 UTC**, per [the announcement](https://docs.sqd.dev/announcements/gateway-api-keys); get one at <https://portal.sqd.dev/app>. Solana squids migrate to Portal directly: their v2 gateway has kept only the last 30 days of data since 2026-06-01.
 - EVM: the `evmLog` → `log` field-selection rename; `decodeHex` and `assertNotNull` import moves to `@subsquid/util-internal-hex` / `@subsquid/util-internal`; removal of `@subsquid/archive-registry` for older `lookupArchive` squids; unwinding the `EvmBatchProcessorFields<typeof processor>` typegen pattern; the `Block` ↔ `BlockData` swap; the flipped `DataHandlerContext` generic order; `block.height` → `block.header.number`.
-- Solana: ordering `SolanaRpcClient` removal *before* the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; Portal `solana-stream@^1.x.x` no longer ships a default field set, so every field your handler reads must be in `.setFields()` (notably `tokenBalance.preMint` / `postMint`, `transaction.signatures`, `block.header.timestamp`).
+- Solana: removing `SolanaRpcClient` before the package bump; block-height → slot conversion; `block.header.slot` → `block.header.number`; `supportHotBlocks: true`; Portal `solana-stream@^1.x.x` no longer ships a default field set, so every field your handler reads must be in `.setFields()` (notably `tokenBalance.preMint` / `postMint`, `transaction.signatures`, `block.header.timestamp`).
 
 **Install just this skill:**
 ```bash
@@ -47,6 +47,13 @@ npx skills add subsquid-labs/skills/squid-sdk/squid-perf
 ```
 
 [**See skill details →**](./squid-perf/SKILL.md)
+
+**Maintaining it:**
+- `scripts/fetch-logs.sh` matches the `sqd logs` pagination prompt (`type "it" to fetch more logs`) as a literal string. Update it when the `sqd` CLI changes the prompt.
+- `templates/report.html` is a bundled file that already contains the chart code. `scripts/report.mjs` fills its `<script id="__REPORT_DATA__">` slot and builds no markup of its own, so layout and styling changes mean re-bundling the template.
+- The `ReportData` schema is the `TEMPLATE CONTRACT` comment inside the template. Change it together with `buildReportData` in `report.mjs`.
+- `CATCHUP_GAP_BLOCKS` (10) is defined in both `parse.mjs` and `report.mjs`; keep the two equal.
+- `tests/run-tests.sh` covers the cache key, the parser and the report. Run it after any script change.
 
 ## Resources
 

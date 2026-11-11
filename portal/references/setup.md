@@ -57,7 +57,7 @@ SQD_PORTAL_API_KEY=<the user pastes the key here>
 - Check that `.env` is in `.gitignore`, and add it if it is missing.
 - For a hosted service, put the key in the platform's secret variables instead of a file.
 
-See the credential rules in `../SKILL.md` (External Data Boundary) and, for indexers, `pipes-sdk/references/CREDENTIALS.md`.
+See the credential rules in `../SKILL.md` (Untrusted data) and, for indexers, `pipes-sdk/references/CREDENTIALS.md`.
 
 ## 5. Send the key
 

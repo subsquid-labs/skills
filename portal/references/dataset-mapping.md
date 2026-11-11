@@ -1,19 +1,19 @@
-# Full Portal Chain Name Mapping
+# Portal Dataset Names
 
-SQD documentation summarizes coverage as **140+ networks**, including non-public datasets. The public Portal catalog returned **139 entries on 2026-09-10**. This file maps common chain names to Portal dataset names. For the always-current public list:
+Maps common chain names to Portal dataset slugs. The public catalog returned **106 entries on 2026-11-11**, 34 of them real-time; the SQD docs round coverage to "110+ networks", which includes private datasets such as Arc. Re-check with:
 
 ```bash
-curl -sS -A 'Mozilla/5.0' https://portal.sqd.dev/datasets   # public catalog with real_time flags
-curl -I https://portal.sqd.dev/datasets/{name}/metadata   # 200 = exists, 404 = wrong name
+curl -sS https://portal.sqd.dev/datasets                    # public catalog: dataset, aliases, real_time
+curl -sI https://portal.sqd.dev/datasets/{slug}/metadata    # 200 = served, 404 = retired or misspelled
 ```
 
-Or via MCP: `portal_list_networks` (search by name/alias/chain ID, filter by `vm` and `real_time_only`).
+Or via MCP: `portal_list_networks` (search by name, alias or chain ID; filter with `vm` and `real_time_only`).
 
-> **67 datasets retired on 2026-08-20 at 12:00 UTC.** Ingestion and access ended. The retirement list is authoritative even if a slug remains discoverable; never treat endpoint existence alone as an active-data guarantee. Full list in [Retired on 2026-08-20](#retired-on-2026-08-20) below.
+A slug is usable when `/metadata` answers `200` and it is absent from [Retired datasets](#retired-datasets). Retirements are announced ahead of the cut-off at <https://docs.sqd.dev/announcements>, so a slug can still answer `200` while it has an end date.
 
-## Real-Time Datasets (33)
+## Real-Time Datasets (34)
 
-These datasets stream to the live chain head; everything else is finalized-historical only.
+These stream to the live chain head. Every other dataset serves finalized history only.
 
 | Common Name | Portal Dataset Name | Type |
 |-------------|-------------------|------|
@@ -32,6 +32,7 @@ These datasets stream to the live chain head; everything else is finalized-histo
 | Berachain | `berachain-mainnet` | EVM |
 | Flare | `flare-mainnet` | EVM |
 | Ink | `ink-mainnet` | EVM |
+| Katana | `katana-mainnet` | EVM |
 | MegaETH | `megaeth-mainnet` | EVM |
 | Monad | `monad-mainnet` | EVM |
 | Plasma | `plasma-mainnet` | EVM |
@@ -51,27 +52,22 @@ These datasets stream to the live chain head; everything else is finalized-histo
 | Monad Testnet | `monad-testnet` | EVM (testnet) |
 | Alpen Testnet | `alpen-testnet` | EVM (testnet) |
 
-> **Real-time streaming is NOT supported for Substrate chains** — those are finalized-historical only.
+Substrate datasets are finalized-history only.
 
-## Popular Historical-Only EVM Chains
+## Historical-Only EVM Mainnets
 
 | Common Name | Portal Dataset Name |
 |-------------|-------------------|
 | Scroll | `scroll-mainnet` |
-| Blast | `blast-l2-mainnet` |
 | Mantle | `mantle-mainnet` |
 | Mode | `mode-mainnet` |
-| Taiko | `taiko-mainnet` |
-| Polygon zkEVM | `polygon-zkevm-mainnet` |
 | Arbitrum Nova | `arbitrum-nova` |
 | Sonic | `sonic-mainnet` |
 | opBNB | `opbnb-mainnet` |
 | Metis | `metis-mainnet` |
 | Manta Pacific | `manta-pacific` |
-| Moonbeam (EVM) | `moonbeam-mainnet` |
-| Moonriver (EVM) | `moonriver-mainnet` |
 | Astar (EVM) | `astar-mainnet` |
-| Abstract | `abstract-mainnet` |
+| Astar zkEVM | `astar-zkevm-mainnet` |
 | Hedera (EVM mirror) | `hedera-mainnet` |
 | Etherlink | `etherlink-mainnet` |
 | Lukso | `lukso-mainnet` |
@@ -79,7 +75,7 @@ These datasets stream to the live chain head; everything else is finalized-histo
 | X Layer | `xlayer-mainnet` |
 | zkLink Nova | `zklink-nova-mainnet` |
 | Plume | `plume-mainnet` |
-| Katana | `katana-mainnet` |
+| HashKey | `hashkey-mainnet` |
 | Hemi | `hemi-mainnet` |
 | BOB | `bob-mainnet` |
 | B3 | `b3-mainnet` |
@@ -88,29 +84,20 @@ These datasets stream to the live chain head; everything else is finalized-histo
 | Bittensor EVM | `bittensor-mainnet-evm` |
 | Peaq (EVM) | `peaq-mainnet` |
 
-### Removed from Portal (do NOT use)
-
-- ❌ `worldchain-mainnet` — no longer served
-- ❌ `fantom-mainnet` — no longer served
-- ❌ `ethereum-holesky` — retired 2026-08-05 (use `ethereum-sepolia` or `ethereum-hoodi`)
-- ❌ `adi-mainnet` / `adi-testnet` — no longer served
-- ❌ `memecore-mainnet` / `exosama` / `botanix-mainnet` — networks retired July 2026
-- ❌ `acala` / `subsocial-parachain`: retired 2026-08-20; no replacement dataset
-
-Thirty more low-usage datasets (mostly testnets and small parachains, e.g. `westend`, `rococo`, `dancebox`) were retired on 2026-08-05. Any slug absent from the Public Catalog Snapshot below is gone from the public endpoint.
+Testnets for these chains are in the [catalog snapshot](#public-catalog-snapshot-2026-11-11-106-entries).
 
 ## Solana-VM (SVM) Datasets
 
-| Common Name | Portal Dataset Name | Type |
-|-------------|-------------------|------|
-| Solana | `solana-mainnet` (alias: `solana-beta`) | Solana |
-| Solana Devnet | `solana-devnet` | Solana |
-| SOON | `soon-mainnet` (+ `soon-devnet`, `soon-testnet`) | Solana |
-| SVM BNB | `svm-bnb-mainnet` (+ `svm-bnb-testnet`) | Solana |
+| Common Name | Portal Dataset Name |
+|-------------|-------------------|
+| Solana | `solana-mainnet` (alias: `solana-beta`) |
+| Solana Devnet | `solana-devnet` |
+| SOON | `soon-mainnet` (+ `soon-devnet`, `soon-testnet`) |
+| SVM BNB | `svm-bnb-mainnet` (+ `svm-bnb-testnet`) |
 
-All use `"type": "solana"` queries.
+All take `"type": "solana"` queries.
 
-## Substrate Chains (selection)
+## Substrate Datasets
 
 | Common Name | Portal Dataset Name |
 |-------------|-------------------|
@@ -118,51 +105,61 @@ All use `"type": "solana"` queries.
 | Kusama | `kusama` |
 | Polkadot Asset Hub | `asset-hub-polkadot` |
 | Kusama Asset Hub | `asset-hub-kusama` |
-| Moonbeam (Substrate) | `moonbeam-substrate` |
-| Moonriver (Substrate) | `moonriver-substrate` |
+| Paseo Asset Hub | `asset-hub-paseo` |
+| Westend Asset Hub | `asset-hub-westend` |
 | Astar (Substrate) | `astar-substrate` |
+| Peaq (Substrate) | `peaq-mainnet-substrate` |
+| Peaq Agung testnet (Substrate) | `agung` |
 | Hydration (HydraDX) | `hydradx` |
 | Vara | `vara` |
-| Bittensor | `bittensor` |
-| Zeitgeist | `zeitgeist` |
-| Enjin Matrix | `enjin-matrix` |
-| Peaq (Substrate) | `peaq-mainnet-substrate` |
+| Bittensor | `bittensor` (+ `bittensor-testnet`) |
+| Chainflip | `chainflip` |
+| zkVerify | `zkverify-mainnet` (+ `zkverify-testnet`) |
 
-> Many smaller parachains (Acala, Bifrost, Phala, Interlay, Centrifuge, Avail, Frequency, Polymesh, KILT, and others) **retired on 2026-08-20**. See the retirement list below before using a historical slug.
+Four chains have both a Substrate dataset (`"type": "substrate"`) and an EVM dataset (`"type": "evm"`). Pick by the data model the question needs; the Frontier filters that read EVM activity from the Substrate side (`evmLogs`, `ethereumTransactions`) are in `substrate.md`.
 
-Many more parachains are available — search the full list below or use `portal_list_networks` with `vm: "substrate"`.
+| Chain | Substrate dataset | EVM dataset |
+|---|---|---|
+| Astar | `astar-substrate` | `astar-mainnet` |
+| Peaq | `peaq-mainnet-substrate` | `peaq-mainnet` |
+| Peaq Agung | `agung` | `agung-evm` |
+| Bittensor | `bittensor` | `bittensor-mainnet-evm` |
 
-> **Note:** Frontier EVM parachains (Moonbeam, Astar, Peaq) have both EVM and Substrate datasets. Use the `-substrate` suffix with `"type": "substrate"` for Substrate queries; use the EVM dataset (e.g., `moonbeam-mainnet`) with `"type": "evm"` for EVM queries.
-
-## Non-EVM Chains
+## Hyperliquid Datasets
 
 | Common Name | Portal Dataset Name | Type |
 |-------------|-------------------|------|
-| Bitcoin | `bitcoin-mainnet` | Bitcoin |
-| Tron | `tron-mainnet` | Tron |
-| Solana | `solana-mainnet` | Solana |
 | HyperEVM | `hyperliquid-mainnet` | EVM |
 | HyperEVM Testnet | `hyperliquid-testnet` | EVM |
 | Hyperliquid Fills | `hyperliquid-fills` | HyperliquidFills |
 | Hyperliquid Replica Cmds | `hyperliquid-replica-cmds` | HyperliquidReplicaCmds |
 
-## Platform Name Comparison
+## Names That Differ Across Platforms
 
-Different platforms use different names for the same chains:
-
-| Blockchain | DeFiLlama | Portal | Etherscan |
+| Blockchain | DeFiLlama | Portal | Explorer |
 |-----------|-----------|--------|-----------|
-| Arbitrum | arbitrum | arbitrum-one | arbiscan.io |
-| BSC | bsc | binance-mainnet | bscscan.com |
-| zkSync Era | zksync-era | zksync-mainnet | explorer.zksync.io |
-| Blast | blast | blast-l2-mainnet | blastscan.io |
-| Tron | tron | tron-mainnet | tronscan.org |
+| Arbitrum | arbitrum | `arbitrum-one` | arbiscan.io |
+| BSC | bsc | `binance-mainnet` | bscscan.com |
+| zkSync Era | zksync-era | `zksync-mainnet` | explorer.zksync.io |
+| Tron | tron | `tron-mainnet` | tronscan.org |
 
-**Always use Portal-specific names when querying the Portal API.**
+## Retired Datasets
 
-## Retired on 2026-08-20
+A retired slug answers `404` with `"code": "unknown_dataset"` and has no replacement dataset. Tell the user the dataset is retired and offer RPC or a private Portal; a similarly named live slug is a different network.
 
-These 67 datasets retired on **2026-08-20 at 12:00 UTC** ([announcement](https://docs.sqd.dev/announcements/dataset-retirements-august-2026)). Ingestion stopped and access ended. Check this list before using a catalog result.
+| Date | Retired |
+|---|---|
+| 2026-11-04 | `galxe-gravity` (Gravity Alpha shut down), `enjin-matrix`, `enjin-canary-matrix`, `enjin-relay` ([changelog](https://docs.sqd.dev/changelog)) |
+| 2026-10-20 | `blast-l2-mainnet`, `abstract-mainnet`, `abstract-testnet` ([announcement](https://docs.sqd.dev/announcements/dataset-retirements-october-2026)) |
+| 2026-09-23 | Legacy testnets: `blast-sepolia`, `celo-alfajores-testnet`, `gelato-opcelestia-raspberry`, `xlayer-testnet`, `x1-testnet` |
+| 2026-09-22 | `moonbeam-mainnet`, `moonbeam-substrate`, `moonriver-mainnet`, `moonriver-substrate`, `polygon-zkevm-mainnet`, `taiko-mainnet` |
+| 2026-08-20 | 67 low-usage datasets, listed below ([announcement](https://docs.sqd.dev/announcements/dataset-retirements-august-2026)) |
+| 2026-08-05 | `ethereum-holesky` (use `ethereum-sepolia` or `ethereum-hoodi`) and thirty low-usage testnets and parachains such as `westend`, `rococo`, `dancebox` |
+| July 2026 and earlier | `worldchain-mainnet`, `fantom-mainnet`, `adi-mainnet`, `adi-testnet`, `memecore-mainnet`, `exosama`, `botanix-mainnet` |
+
+Also absent from the public catalog since the 2026-09-10 snapshot: `amplitude`, `eden`, `etherlink-testnet`, `invarch-parachain`, `invarch-tinkernet`, `moonbase-substrate`, `moonbase-testnet`, `polygon-zkevm-cardona-testnet`, `vara-testnet`, `zeitgeist`, `zeitgeist-testnet`.
+
+Retired on 2026-08-20 at 12:00 UTC:
 
 ```
 0g-testnet acala aleph-zero aleph-zero-evm-mainnet arthera-mainnet avail basilisk berachain-bartio
@@ -175,82 +172,27 @@ shibuya-substrate shiden-mainnet shiden-substrate skale-nebula sora-mainnet subs
 superseed-mainnet tanssi ternoa turing-avail turing-mainnet
 ```
 
-## Public Catalog Snapshot (2026-09-10, 139 entries)
+## Public Catalog Snapshot (2026-11-11, 106 entries)
 
-Grep this block to check a public catalog name, then verify with `/metadata` and the retirement list before use. Catalog membership is discovery data, not an availability commitment.
+Grep this block for a slug, then confirm it with `/metadata` before use. The live catalog is the source of truth; this copy saves a request when the name is already here.
 
 ```
-abstract-mainnet abstract-testnet agung agung-evm alpen-testnet amplitude arbitrum-nova arbitrum-one
-arbitrum-sepolia asset-hub-kusama asset-hub-paseo asset-hub-polkadot asset-hub-westend astar-mainnet
-astar-substrate astar-zkevm-mainnet astar-zkyoto avalanche-mainnet avalanche-testnet b3-mainnet
-b3-sepolia base-mainnet base-sepolia beam-mainnet berachain-mainnet binance-mainnet binance-testnet
-bitcoin-mainnet bittensor bittensor-mainnet-evm bittensor-testnet bittensor-testnet-evm
-blast-l2-mainnet blast-sepolia bob-mainnet bob-sepolia celo-alfajores-testnet celo-mainnet chainflip
-core-mainnet dogechain-mainnet eden enjin-canary-matrix enjin-matrix enjin-relay ethereum-hoodi
-ethereum-mainnet ethereum-mainnet-tb ethereum-sepolia etherlink-mainnet etherlink-shadownet
-etherlink-testnet flare-mainnet gelato-opcelestia-raspberry gnosis-mainnet hashkey-mainnet
+agung agung-evm alpen-testnet arbitrum-nova arbitrum-one arbitrum-sepolia asset-hub-kusama
+asset-hub-paseo asset-hub-polkadot asset-hub-westend astar-mainnet astar-substrate
+astar-zkevm-mainnet astar-zkyoto avalanche-mainnet avalanche-testnet b3-mainnet b3-sepolia
+base-mainnet base-sepolia beam-mainnet berachain-mainnet binance-mainnet binance-testnet
+bitcoin-mainnet bittensor bittensor-mainnet-evm bittensor-testnet bittensor-testnet-evm bob-mainnet
+bob-sepolia celo-mainnet chainflip core-mainnet ethereum-hoodi ethereum-mainnet ethereum-mainnet-tb
+ethereum-sepolia etherlink-mainnet etherlink-shadownet flare-mainnet gnosis-mainnet hashkey-mainnet
 hedera-mainnet hemi-mainnet hemi-testnet hydradx hyperliquid-fills hyperliquid-mainnet
-hyperliquid-replica-cmds hyperliquid-testnet ink-mainnet ink-sepolia invarch-parachain
-invarch-tinkernet katana-mainnet kusama linea-mainnet lukso-mainnet manta-pacific
-manta-pacific-sepolia mantle-mainnet mantle-sepolia megaeth-mainnet megaeth-testnet metis-mainnet
-mode-mainnet monad-mainnet monad-testnet moonbase-substrate moonbase-testnet moonbeam-mainnet
-moonbeam-substrate moonriver-mainnet moonriver-substrate neon-mainnet opbnb-mainnet opbnb-testnet
-optimism-mainnet optimism-sepolia peaq-mainnet peaq-mainnet-substrate pendulum plasma-mainnet
-plasma-testnet plume-mainnet polkadot polygon-amoy-testnet polygon-mainnet
-polygon-zkevm-cardona-testnet polygon-zkevm-mainnet prom-mainnet scroll-mainnet scroll-sepolia
-skale-nebula solana-devnet solana-mainnet soneium-mainnet soneium-minato-testnet sonic-mainnet
-sonic-testnet soon-devnet soon-mainnet soon-testnet svm-bnb-mainnet svm-bnb-testnet tac-mainnet
-taiko-mainnet tron-mainnet unichain-mainnet unichain-sepolia vara vara-testnet x1-testnet
-xlayer-mainnet xlayer-testnet zeitgeist zeitgeist-testnet zklink-nova-mainnet zksync-mainnet
-zksync-sepolia zkverify-mainnet zkverify-testnet zora-mainnet zora-sepolia
-```
-
-## Quick Reference: Top Chains
-
-```json
-{
-  "Ethereum": "ethereum-mainnet",
-  "Arbitrum": "arbitrum-one",
-  "Base": "base-mainnet",
-  "Optimism": "optimism-mainnet",
-  "Polygon": "polygon-mainnet",
-  "BSC": "binance-mainnet",
-  "Avalanche": "avalanche-mainnet",
-  "zkSync Era": "zksync-mainnet",
-  "Linea": "linea-mainnet",
-  "Gnosis": "gnosis-mainnet",
-  "Celo": "celo-mainnet",
-  "Berachain": "berachain-mainnet",
-  "Monad": "monad-mainnet",
-  "MegaETH": "megaeth-mainnet",
-  "Unichain": "unichain-mainnet",
-  "Scroll": "scroll-mainnet",
-  "Blast": "blast-l2-mainnet",
-  "Polkadot": "polkadot",
-  "Kusama": "kusama",
-  "Moonbeam (Substrate)": "moonbeam-substrate",
-  "Solana": "solana-mainnet",
-  "Bitcoin": "bitcoin-mainnet",
-  "Tron": "tron-mainnet",
-  "Hyperliquid Fills": "hyperliquid-fills",
-  "HyperEVM": "hyperliquid-mainnet"
-}
-```
-
-## Using Dataset Names as Constants
-
-```typescript
-const PORTAL_DATASETS = {
-  ETHEREUM: 'ethereum-mainnet',
-  ARBITRUM: 'arbitrum-one',
-  BASE: 'base-mainnet',
-  OPTIMISM: 'optimism-mainnet',
-  BSC: 'binance-mainnet',
-  SOLANA: 'solana-mainnet',
-  BITCOIN: 'bitcoin-mainnet',
-  TRON: 'tron-mainnet'
-} as const;
-
-// Use:
-const url = `https://portal.sqd.dev/datasets/${PORTAL_DATASETS.ARBITRUM}/stream`;
+hyperliquid-replica-cmds hyperliquid-testnet ink-mainnet ink-sepolia katana-mainnet kusama
+linea-mainnet lukso-mainnet manta-pacific manta-pacific-sepolia mantle-mainnet mantle-sepolia
+megaeth-mainnet megaeth-testnet metis-mainnet mode-mainnet monad-mainnet monad-testnet
+opbnb-mainnet opbnb-testnet optimism-mainnet optimism-sepolia peaq-mainnet peaq-mainnet-substrate
+plasma-mainnet plasma-testnet plume-mainnet polkadot polygon-amoy-testnet polygon-mainnet
+prom-mainnet scroll-mainnet scroll-sepolia solana-devnet solana-mainnet soneium-mainnet
+soneium-minato-testnet sonic-mainnet sonic-testnet soon-devnet soon-mainnet soon-testnet
+svm-bnb-mainnet svm-bnb-testnet tac-mainnet tron-mainnet unichain-mainnet unichain-sepolia vara
+xlayer-mainnet zklink-nova-mainnet zksync-mainnet zksync-sepolia zkverify-mainnet zkverify-testnet
+zora-mainnet zora-sepolia
 ```

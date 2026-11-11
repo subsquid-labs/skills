@@ -25,8 +25,7 @@ detail lives in the auto-generated section of each
 - `portal` now routes Tron questions to the `portal_tron_query_logs` and
   `portal_tron_query_transactions` MCP tools and EVM internal-call questions to
   `portal_evm_query_traces`, and points at the server's `sqd://investigations`
-  workflow guide. The catalog notes match Portal MCP server 0.8.5 (28 public
-  tools plus 3 debug tools).
+  workflow guide.
 - `pipes-sdk` connection examples use injected credentials or protected client files,
   and diagnostics keep secret values out of terminal output.
 - `pipes-sdk` and `portal` validate fetched data before using it in tool requests;
@@ -40,15 +39,54 @@ detail lives in the auto-generated section of each
   starts a Docker container without explicit confirmation, and a new pattern
   table routes an indexer request to the right decoder layout (single
   contract, fixed list, factory, topic0-only, several ABIs, one or many tables).
+- All four skills are rewritten for the agent that runs them. Each is a short
+  list of numbered steps that end on a condition the agent can check ("Done
+  when the slug answers 200"), with chain-specific and target-specific detail
+  in references that load only when needed. The skills take less context
+  (`portal` 499 lines to 183, `migrate-to-portal` 481 to 84, `pipes-sdk` 294 to
+  193) and an agent follows the same process on every run.
+- `portal` reads the MCP tool catalog from the live server (`sqd://tools`)
+  instead of a table that went stale with each server release, continues a
+  Stream API response that ends before `toBlock`, and tells the user when a
+  dataset is retired or has an announced end date instead of substituting a
+  similar name.
+- `migrate-to-portal` keeps the steps both chains share in `SKILL.md` and moves
+  the EVM and Solana procedures into one reference each. It ends on three
+  checks (no v2 code left, a clean type-check, a local run that processes
+  blocks), and covers what changed upstream: Portal clients retry for about
+  five minutes by default from `@subsquid/evm-stream` 0.1.4 and
+  `@subsquid/solana-stream` 1.2.1, the `@subsquid/squid-sdk` fallback data
+  source fails over between Portal and RPC, and a dedicated Portal takes its
+  key in an `x-api-key` header.
+- `pipes-sdk` covers Pipes SDK 1.0.0-beta.7 to beta.11 and CLI 1.0.0-beta.3:
+  `store.removeRowsAfter` in ClickHouse rollbacks, `program` on the Solana
+  instruction decoder, the `mockPortal` test helper, the stalled-response
+  watchdog, and the coded errors the SDK now raises at startup (`E0003`,
+  `E0004`, `E1006`, `E2321`, `E2411`, `E2426`).
+- `squid-perf` explains how to read its report: what each of the three times
+  means, where a sync is considered finished, and what each warning says about
+  the numbers next to it.
+- `AGENTS.md` describes how to write a skill for this repository: a
+  description that lists one trigger per case, steps with completion criteria,
+  one source for each fact, and instructions phrased as the behaviour wanted.
 
 ### Fixed
 
-- `pipes-sdk` version notes match the npm registry on 2026-09-10: the `alpha`
-  tag resolves to 1.0.0-alpha.25 and the generated caret range installs
-  1.0.0-beta.6.
-- The Portal dataset catalog snapshot matches the live catalog on 2026-09-10
-  (139 public entries, `hashkey-mainnet` added), and the network count is the
-  same everywhere in the repository.
+- `pipes-sdk` version notes match the npm registry on 2026-11-11:
+  `@subsquid/pipes` 1.0.0-beta.11 and `@subsquid/pipes-cli` 1.0.0-beta.3 are
+  both the `latest` tag, and a generated project pins `^1.0.0-beta.10`. The
+  warning that `pipes-cli@latest` is a stale alpha is gone because it no longer
+  is.
+- The Portal dataset catalog matches the live catalog on 2026-11-11: 106 public
+  entries, 34 of them real-time (Katana joined). Moonbeam, Moonriver, Polygon
+  zkEVM, Taiko, Blast, Abstract, Gravity Alpha, Enjin and the legacy testnets
+  retired since September moved to a dated retirement list, and the
+  repository no longer quotes a network count that drifts.
+- `portal` Substrate examples for Frontier EVM logs use Astar; they used
+  Moonbeam, whose datasets retired on 2026-09-22.
+- `migrate-to-portal` no longer offers a gateway API key as a way to keep a
+  Solana squid on v2. The Solana v2 gateway has held only the last 30 days of
+  data since 2026-06-01, so the skill sends Solana squids to Portal.
 - The `squid-sdk` README no longer claims an MIT license or a v2 API-key step
   for Solana; both now match the skills and the repository license.
 
