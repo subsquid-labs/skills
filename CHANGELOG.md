@@ -82,6 +82,10 @@ detail lives in the auto-generated section of each
   zkEVM, Taiko, Blast, Abstract, Gravity Alpha, Enjin and the legacy testnets
   retired since September moved to a dated retirement list, and the
   repository no longer quotes a network count that drifts.
+- `pipes-sdk` handles a break in new `custom` EVM projects: CLI 1.0.0-beta.3
+  generates contract types with typegen 5, which the generated project cannot
+  load (`ERR_MODULE_NOT_FOUND` on the first run). The skill regenerates them
+  with typegen 4.6.0 before starting the indexer.
 - `portal` Substrate examples for Frontier EVM logs use Astar; they used
   Moonbeam, whose datasets retired on 2026-09-22.
 - `migrate-to-portal` no longer offers a gateway API key as a way to keep a

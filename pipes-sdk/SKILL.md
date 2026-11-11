@@ -100,12 +100,12 @@ Done when the project folder holds `src/index.ts` and its dependencies are insta
 
 ### 3. Fit the project to its environment
 
-1. **ABI (custom template).** `grep "export const events" <project>/src/contracts/*.ts` lists the events you researched. When it lists only `Upgraded`, the ABI came from a proxy: generate types from the implementation, update the import in `src/index.ts`, and keep the proxy address in `contracts:`.
+1. **ABI (custom template).** CLI beta.3 generates `src/contracts/` with typegen 5, which the project cannot load: `ls <project>/src/contracts` shows a directory per address and `abi.support.ts`. Regenerate with `@subsquid/evm-typegen@4.6.0` as in [Pattern 1](references/TROUBLESHOOTING.md#error-pattern-1-abi-version-mismatch), so there is one `0x<address>.ts` per contract. Then `grep "export const events" <project>/src/contracts/*.ts` lists the events you researched. When it lists only `Upgraded`, the ABI came from a proxy: generate types from the implementation, update the import in `src/index.ts`, and keep the proxy address in `contracts:`.
 2. **Its own database.** The CLI names the database `pipes` in every project, and two projects with an `erc20_transfers` table would write into the same one. Create a database named after the project with hyphens turned into underscores (`my-indexer` becomes `my_indexer`) and set it in `<project>/.env` (`CLICKHOUSE_DATABASE=...`).
 3. **Credentials.** `SELECT 1` succeeds with the configured credentials. Check that without displaying them, and replace generated demo passwords before shared or hosted use: [CREDENTIALS.md](references/CREDENTIALS.md).
 4. **Docker files.** The CLI writes `docker-compose.yml` and a `Dockerfile` into every project. When the user runs their own database, delete both and point `.env` at it.
 
-Done when the generated contracts export the events from step 1, `.env` names a database only this project uses, and `SELECT 1` succeeds.
+Done when `src/contracts/` holds one module per contract that exports the events from step 1, `.env` names a database only this project uses, and `SELECT 1` succeeds.
 
 ### 4. Start it and read the first log line
 
@@ -146,7 +146,7 @@ Done when the indexer runs past the point where it failed and the affected table
 
 | Symptom | Cause | See |
 |---|---|---|
-| `Type 'LogParams' not assignable` | `@subsquid/evm-abi` 1.x where the SDK needs `0.3.1`, often pulled in by `@subsquid/evm-typegen@5` | [Pattern 1](references/TROUBLESHOOTING.md#error-pattern-1-abi-version-mismatch) |
+| `Type 'LogParams' not assignable`, or `ERR_MODULE_NOT_FOUND` for `src/contracts/0x….js` on a new `custom` project | Code from `@subsquid/evm-typegen@5` (evm-abi 1.x) in a project that needs evm-abi `0.3.1`; the CLI generates it by default | [Pattern 1](references/TROUBLESHOOTING.md#error-pattern-1-abi-version-mismatch) |
 | Portal 429, 529, timeout, `ECONNREFUSED` | Rate limit or network; the SDK retries these itself | [Pattern 2](references/TROUBLESHOOTING.md#error-pattern-2-portal-api-connection-failed) |
 | `portal response stalled` or `stalled: waiting for data` in the log | A response stopped sending data; the client re-requests | [Stall watchdog](references/STREAM_RESILIENCE.md#stalled-responses-and-the-stall-watchdog) |
 | `ClickHouse authentication failed` | Credentials, or the database is not running | [Pattern 3](references/TROUBLESHOOTING.md#error-pattern-3-database-connection-failed) |

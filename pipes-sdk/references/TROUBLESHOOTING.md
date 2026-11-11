@@ -22,6 +22,12 @@ Type 'LogParams' is not assignable to type 'EvmLogParams'
 Property 'topics' is missing in type 'LogParams'
 ```
 
+On a project fresh from the CLI's `custom` EVM template, at the first `npm run dev`:
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '<project>/src/contracts/0x<address>.js'
+SyntaxError: The requested module '@subsquid/evm-abi' does not provide an export named 'func'
+```
+
 **Root cause:** `@subsquid/evm-abi` v1.x.x instead of v0.3.1. `@subsquid/pipes` 1.0.0-beta.11 depends on `@subsquid/evm-abi` `0.3.1` exactly, and CLI-generated EVM projects pin the same version. `@subsquid/evm-typegen@5` depends on `@subsquid/evm-abi` `^1.0.0` and generates code for that API, so generate ABI modules with `@subsquid/evm-typegen@4.6.0` (see [ABI_GUIDE.md](ABI_GUIDE.md)). Re-check with `npm view @subsquid/pipes@1.0.0-beta.11 dependencies --json`.
 
 **Fix:**
@@ -34,6 +40,15 @@ Property 'topics' is missing in type 'LogParams'
 }
 ```
 Then `npm install` and verify types resolve.
+
+**Fix for the fresh `custom` project** (reproduced on 2026-11-11 with CLI 1.0.0-beta.3): the CLI generates `src/contracts/` with `@subsquid/evm-typegen@latest`, which is 5.0.0. Typegen 5 writes a directory per contract plus `abi.support.ts` for the evm-abi 1.x API, while `src/index.ts` imports `./contracts/<address>.js` and `package.json` pins evm-abi `0.3.1`. Keep the pins and regenerate the contract module with typegen 4.6.0, which writes the single `<address>.ts` file the import expects:
+
+```bash
+rm -rf src/contracts/0x<address> src/contracts/abi.support.ts
+npx @subsquid/evm-typegen@4.6.0 src/contracts 0x<address> --chain-id <chain-id>
+```
+
+That fetches the ABI by address, as the CLI did. To generate from a reviewed local ABI file, name it `0x<address>.json` and follow [ABI_GUIDE.md](ABI_GUIDE.md). The pipe then loads and goes on to connect to its target. `erc20Transfers` and `uniswapV3Swaps` projects are unaffected: they ship their ABI modules and run no typegen.
 
 ## Error Pattern 2: Portal API Connection Failed
 

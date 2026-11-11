@@ -88,6 +88,8 @@ The shape is **contract-first**: a contract is an ABI-level identity (`contractN
 
 **Common mistake:** `"contractEvents": ["Deposit", "Withdrawal"]` (just names) fails validation. Each event needs full `{name, type, inputs}` with `indexed: true` for indexed params.
 
+**The generated `src/contracts/` needs regenerating before the first run** (CLI 1.0.0-beta.3, reproduced 2026-11-11). The CLI runs `@subsquid/evm-typegen@latest` (5.0.0), whose output does not match the `./contracts/<address>.js` import or the pinned `@subsquid/evm-abi` `0.3.1`, so `npm run dev` stops with `ERR_MODULE_NOT_FOUND`. Regenerate with typegen 4.6.0 as shown in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#error-pattern-1-abi-version-mismatch).
+
 ### Template Parameter Mapping
 
 | templateId | Required params | Description |
