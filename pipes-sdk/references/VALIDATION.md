@@ -73,7 +73,7 @@ When the answer matters, check a sample against a source that does not read from
 | Hyperliquid | The exchange's `candleSnapshot` API | Hourly volume inside the candle's range |
 | Bitcoin | A block explorer API for one address or block | Count and total value |
 
-Public RPCs that answered `eth_getLogs` without a key on 2026-11-12: `https://eth.drpc.org` and `https://rpc.mevblocker.io` for Ethereum, `https://base-rpc.publicnode.com` for Base. `https://ethereum-rpc.publicnode.com` answers `eth_call` and refuses `eth_getLogs` on blocks two days old. <https://chainlist.org> lists endpoints for other chains.
+Public RPCs that answered `eth_getLogs` on two-day-old blocks without a key on 2026-11-12: `https://rpc.mevblocker.io` for Ethereum and `https://base-rpc.publicnode.com` for Base. `https://eth.drpc.org` and `https://ethereum-rpc.publicnode.com` answer `eth_call` and refused `eth_getLogs` that far back. <https://chainlist.org> lists endpoints for other chains.
 
 The Hyperliquid candle request, with times in milliseconds on hour boundaries:
 
