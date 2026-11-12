@@ -460,7 +460,7 @@ The `asset` filter matches the raw hex `asset_name` verbatim (`31303035313537` =
 - **Add topic0/sighash** — another 10x on busy contracts (USDT especially)
 - **Use narrow block ranges** while exploring (Tron produces a block every 3 seconds — ~28,800 blocks/day)
 - **Request only needed fields** — skip `rawDataHex`, `signature`, `parameter` unless required
-- **Resolve time ranges** with `scripts/block-at.sh tron-mainnet tron <unix-seconds>`, which searches block header timestamps. The `/timestamps/{unix-seconds}/block` endpoint is unreliable on this dataset: it can answer about 1,000 s (344 blocks) early, near the head a later time can return an earlier block, and a far-future timestamp clamps to near the head where other datasets answer `404`. Header timestamps in the stream are milliseconds.
+- **Resolve time ranges** with `scripts/block-at.sh tron-mainnet tron <unix-seconds>`, which searches block header timestamps. The `/timestamps/{unix-seconds}/block` endpoint is unreliable on this dataset. For an older time it answers the first block of a storage chunk, about 1,000 s (344 blocks) early in one test. Near the head it is exact only when given milliseconds, and given seconds it answers the oldest recent block. Also, a far-future timestamp clamps to near the head where other datasets answer `404`. Header timestamps in the stream are milliseconds.
 
 ---
 

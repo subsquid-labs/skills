@@ -287,7 +287,7 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 
 **No field marks a liquidation.** There is no `liquidation` field and no `dir` value for one. When the user asks for liquidations, say this dataset cannot identify them and report the count as unavailable. Zero would be a false answer.
 
-**Time windows.** The dataset produces about 14 blocks per second, and the `/timestamps` endpoint is wrong on it. Resolve the window's blocks with `scripts/block-at.sh hyperliquid-fills hyperliquidFills <unix-seconds>`, then keep the fills whose `time` falls inside the window.
+**Time windows.** The dataset produces about 14 blocks per second, and the `/timestamps` endpoint mixes seconds and milliseconds on it (SKILL.md, step 3). Resolve the window's blocks with `scripts/block-at.sh hyperliquid-fills hyperliquidFills <unix-seconds>`, then keep the fills whose `time` falls inside the window.
 
 ---
 

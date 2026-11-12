@@ -53,7 +53,7 @@ evmEventDecoder({ range: { from: 'latest' }, ... })
 
 **Validation:** Inverted ranges (`from > to`) and unresolvable timestamps throw `BlockRangeConfigurationError` (E0002).
 
-Dates resolve through Portal's `/timestamps/{ts}/block` lookup, which is right on EVM chains and Solana and wrong on `hyperliquid-fills` (about two hours early near the head, measured 2026-11-11) and on `tron-mainnet` near the head. On those two datasets pass block numbers found from header timestamps (the **portal** skill, step 3).
+Dates resolve through Portal's `/timestamps/{ts}/block` lookup, which is right on EVM chains and for Solana times in the last two weeks. It is wrong on `hyperliquid-fills` and `tron-mainnet` (80 to 100 minutes early near the head, measured 2026-11-12), and on 2026-11-12 it answered slot 454628475 for every Solana time before 2026-10-08, so an older Solana date in `range` starts the run in October 2026 with no error. In those cases pass block numbers found from header timestamps (the **portal** skill, step 3).
 
 ## `defineAbi` — Use JSON ABIs Without Codegen
 
