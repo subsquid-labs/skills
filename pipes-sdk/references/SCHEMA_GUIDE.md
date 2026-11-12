@@ -6,9 +6,9 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 
 | Solidity Type | ClickHouse Type | Reasoning |
 |---------------|-----------------|-----------|
-| `uint256`, `int256` | `String` | Avoids overflow; use `.toString()` in TypeScript |
-| `uint128`, `uint160`, `uint192`, `uint224` | `String` | Too large for native integers |
-| `uint64`, `uint96`, `uint112` | `String` | Safer as string (can be large) |
+| `uint256`, `int256` | `UInt256`, `Int256` | Native 256-bit integers, and what the CLI templates generate. Send the value with `.toString()` |
+| `uint128`, `uint160`, `uint192`, `uint224` | `UInt256` | Same; `UInt128` also fits `uint128` |
+| `uint64`, `uint96`, `uint112` | `UInt64`, `UInt128` | JavaScript numbers lose precision above 2^53, so send these with `.toString()` too |
 | `uint32` | `UInt32` | Safe as native integer |
 | `uint16` | `UInt16` | Safe as native integer |
 | `uint8` | `UInt8` | Safe as native integer |
@@ -20,6 +20,8 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 | block timestamp | `DateTime` or `DateTime64(3)` | Use DateTime64(3) for millisecond precision |
 | `bytes32` (market ID) | `FixedString(66)` | Same as tx hash — 0x + 64 hex |
 
+A `String` column also holds a wide integer, and some examples in these references use one. Arithmetic on it needs a cast (`toUInt256(value)`); keep the column type the scaffold generated.
+
 ## Table Engine Selection
 
 | Use Case | Engine | When to Use |
@@ -29,7 +31,7 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 | **Real-time state updates** | `CollapsingMergeTree(sign)` | Rollback via sign=-1 records |
 | **No reorg concern** | `MergeTree` | Rare; only for finalized data |
 
-**Default recommendation:** `ReplacingMergeTree(block_timestamp)`
+**In a CLI-generated project, keep the generated `CollapsingMergeTree(sign)` tables** (next paragraph). For a table you write by hand, `ReplacingMergeTree(block_timestamp)` is the simplest engine that handles reorgs.
 
 **CLI scaffold default:** the Pipes CLI now generates `CollapsingMergeTree(sign)` tables — each includes a `sign Int8 DEFAULT 1` column and an `INDEX _sqd_rollback_idx block_number TYPE minmax GRANULARITY 1`, not a plain `MergeTree`. This is what makes fork rollbacks propagate through materialized views: the target inserts `sign = -1` cancel rows for rolled-back blocks, and the minmax index keeps the block-range delete cheap. Prefer it over `ReplacingMergeTree` when downstream MVs must stay consistent across reorgs.
 
@@ -179,7 +181,7 @@ onRollback: async ({ reason, store, safeCursor }) => {
 
 Before finalizing a schema:
 - Every ABI field has a corresponding column (or documented reason for exclusion)
-- BigInt fields use `String` type
+- Wide integer fields use `UInt256` or `Int256` (or `String`), and reach the row through `.toString()`
 - Address fields use `FixedString(42)`
 - Standard blockchain columns are present
 - ORDER BY matches expected query patterns

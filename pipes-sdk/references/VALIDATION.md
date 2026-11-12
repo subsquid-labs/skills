@@ -43,7 +43,7 @@ SELECT
 FROM <table>;
 ```
 
-Pass: every count is 0. These are EVM formats; Solana addresses and signatures are base58, and Hyperliquid numbers are floats. An empty amount means a `bigint` reached the row without `.toString()`.
+Pass: every count is 0. These are EVM formats; Solana addresses and signatures are base58, and Hyperliquid numbers are floats. The `bad_amounts` line is for `String` columns, where an empty amount means a `bigint` reached the row without `.toString()`. Drop it for the `UInt256` and `Int256` columns the CLI generates, which cannot hold a malformed value.
 
 ## 4. A bounded window against Portal
 
@@ -72,6 +72,17 @@ When the answer matters, check a sample against a source that does not read from
 | Solana | `getBlock` on a public RPC for two or three slots | Count of matching instructions, inner ones included |
 | Hyperliquid | The exchange's `candleSnapshot` API | Hourly volume inside the candle's range |
 | Bitcoin | A block explorer API for one address or block | Count and total value |
+
+Public RPCs that answered `eth_getLogs` without a key on 2026-11-12: `https://eth.drpc.org` and `https://rpc.mevblocker.io` for Ethereum, `https://base-rpc.publicnode.com` for Base. `https://ethereum-rpc.publicnode.com` answers `eth_call` and refuses `eth_getLogs` on blocks two days old. <https://chainlist.org> lists endpoints for other chains.
+
+The Hyperliquid candle request, with times in milliseconds on hour boundaries:
+
+```bash
+curl -s https://api.hyperliquid.xyz/info -H 'content-type: application/json' \
+  -d '{"type":"candleSnapshot","req":{"coin":"BTC","interval":"1h","startTime":<hour-start-ms>,"endTime":<hour-end-ms-minus-1>}}'
+```
+
+Each candle's `v` is volume in the coin and `n` is the trade count. They equal `sum(sz) / 2` and `count() / 2` over the fills of that coin and hour.
 
 Use `curl` for these and for Portal: Portal and several public RPCs answer `403` to Python's default `urllib` client. Free RPC endpoints often refuse `eth_getLogs` on old blocks or rate-limit batches, so try a second provider before giving up, and report the check as not run when none answers.
 

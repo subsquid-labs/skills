@@ -49,6 +49,8 @@ evmEventDecoder({ range: { from: '18_908_900' }, ... })
 evmEventDecoder({ range: { from: 'latest' }, ... })
 ```
 
+**`to` is inclusive.** A block number in `to` is the last block read. A date in `to` resolves to the first block at or after that time, so the range includes that one block. For a window that must end exactly at a time, pass block numbers and use the block before the one the lookup returns.
+
 **Validation:** Inverted ranges (`from > to`) and unresolvable timestamps throw `BlockRangeConfigurationError` (E0002).
 
 Dates resolve through Portal's `/timestamps/{ts}/block` lookup, which is right on EVM chains and Solana and wrong on `hyperliquid-fills` (about two hours early near the head, measured 2026-11-11) and on `tron-mainnet` near the head. On those two datasets pass block numbers found from header timestamps (the **portal** skill, step 3).

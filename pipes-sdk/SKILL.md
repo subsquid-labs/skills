@@ -93,7 +93,7 @@ pnpx @subsquid/pipes-cli@1.0.0-beta.3 init --config '{
 }'
 ```
 
-The schema is strict. `pnpx @subsquid/pipes-cli@1.0.0-beta.3 init --schema` prints every template ID (camelCase: `erc20Transfers`, `uniswapV3Swaps`, `custom`, `tokenBalances`), its params and the targets. An optional `pipeId` fixes the pipe's cursor key; the CLI saves the config to `pipes.config.json`, so a regenerated project keeps its cursor.
+`npx` runs the CLI the same way when the project uses npm. The schema is strict. `pnpx @subsquid/pipes-cli@1.0.0-beta.3 init --schema` prints every template ID (camelCase: `erc20Transfers`, `uniswapV3Swaps`, `custom`, `tokenBalances`), its params and the targets. An optional `pipeId` fixes the pipe's cursor key; the CLI saves the config to `pipes.config.json`, so a regenerated project keeps its cursor.
 
 For Tron, Bitcoin and Hyperliquid, assemble the project from the patterns in [TEMPLATES.md](references/TEMPLATES.md), with stream and query APIs from [SDK_FEATURES.md](references/SDK_FEATURES.md).
 

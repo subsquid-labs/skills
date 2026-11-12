@@ -105,10 +105,61 @@ Done when `sqlite3 <file>.sqlite "SELECT count(*) FROM factory"` is above zero b
 The history pass reads every block since the factory was deployed, one Portal data chunk per request. Its first progress line prints an ETA. On the shared public Portal that ETA was hours for Uniswap V3 on Ethereum (14 million blocks) on 2026-11-12. When the task cannot spend it:
 
 1. Index the window with [topic0 only](#any-contract-that-emits-the-event-topic0-only) and store the emitter in a `pool` column.
-2. Confirm each distinct emitter against the factory over RPC. For Uniswap V3, read the emitter's `token0()`, `token1()` and `fee()`, then check that the factory's `getPool(token0, token1, fee)` returns the emitter's address. Write the confirmed addresses to their own table.
+2. Confirm each distinct emitter against the factory over RPC, batched through Multicall3 (code below). Write the confirmed addresses to their own table.
 3. Answer from the join: `WHERE pool IN (SELECT address FROM confirmed_pools)`.
 
-Step 2 is required because forks reuse event signatures. In one 48-hour Ethereum window, 326 of the 3,489 contracts that emitted the Uniswap V3 `Swap` signature were not pools of the official factory. Batch the `eth_call`s, and treat a rate-limit or transport error as "not checked yet" and retry it: counting it as "not a child" drops real pools.
+Step 2 is required because forks reuse event signatures. In one 48-hour Ethereum window, 325 of the 3,475 contracts that emitted the Uniswap V3 `Swap` signature were not pools of the official factory.
+
+For Uniswap V3 the check reads the emitter's `token0()`, `token1()` and `fee()`, then asks the factory whether `getPool(token0, token1, fee)` is the emitter. With `viem` (`npm install viem`) and any public RPC for the chain:
+
+```typescript
+import { createPublicClient, http, parseAbi } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const client = createPublicClient({ chain: mainnet, transport: http(RPC_URL) })
+const poolAbi = parseAbi([
+  'function token0() view returns (address)',
+  'function token1() view returns (address)',
+  'function fee() view returns (uint24)',
+])
+const factoryAbi = parseAbi(['function getPool(address, address, uint24) view returns (address)'])
+
+// A call that reverted is an answer. Any other failure is a lost request: stop and rerun.
+const NOT_A_CHILD = ['ContractFunctionRevertedError', 'ContractFunctionZeroDataError']
+function answered<T extends { status: string; error?: Error }>(results: T[]): T[] {
+  for (const r of results) {
+    if (r.status === 'failure' && !NOT_A_CHILD.includes((r.error?.cause as Error)?.name)) throw r.error
+  }
+  return results
+}
+
+const meta = answered(
+  await client.multicall({
+    batchSize: 2048,
+    contracts: emitters.flatMap((address) =>
+      (['token0', 'token1', 'fee'] as const).map((functionName) => ({ address, abi: poolAbi, functionName })),
+    ),
+  }),
+)
+const candidates = emitters.flatMap((address, i) => {
+  const [token0, token1, fee] = meta.slice(i * 3, i * 3 + 3)
+  if (token0.status !== 'success' || token1.status !== 'success' || fee.status !== 'success') return []
+  return [{ address, token0: token0.result as `0x${string}`, token1: token1.result as `0x${string}`, fee: fee.result as number }]
+})
+const pools = answered(
+  await client.multicall({
+    batchSize: 2048,
+    contracts: candidates.map((c) => ({
+      address: FACTORY, abi: factoryAbi, functionName: 'getPool', args: [c.token0, c.token1, c.fee],
+    } as const)),
+  }),
+)
+const confirmed = candidates.filter((c, i) => (pools[i].result as string | undefined)?.toLowerCase() === c.address.toLowerCase())
+```
+
+`emitters` is the list from `SELECT DISTINCT pool`, typed `` `0x${string}`[] ``. This confirmed 3,150 of 3,475 emitters in under one second on each of `eth.drpc.org`, `rpc.mevblocker.io` and `ethereum-rpc.publicnode.com`. Plain JSON-RPC batches of the same calls took nine minutes against those providers' rate limits.
+
+Keep `batchSize` at 2048 and keep `answered`. `multicall` reports a failed HTTP request as a `failure` on every call in that batch, the same status as a revert, so without the check a lost batch reads as hundreds of contracts that are not pools. A 16 KB batch failed that way on two of the three providers.
 
 ## Any contract that emits the event (topic0 only)
 

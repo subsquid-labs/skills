@@ -7,17 +7,20 @@ detail lives in the auto-generated section of each
 
 ## Unreleased
 
-These changes come from eight end-to-end test runs on 2026-11-11 and 12, in
+These changes come from eleven end-to-end test runs on 2026-11-11 and 12, in
 which agents built real indexers and ran real Portal queries from the skills
-and the results were checked against RPC nodes and exchange APIs.
+and the results were checked against RPC nodes and exchange APIs. Three of
+the runs repeated earlier scenarios against the fixed skills.
 
 ### Improved
 
 - `pipes-sdk` has a working recipe for factory contracts in a recent window. A
   factory indexer only learns the contracts created after its start block, so
   a "last 48 hours of Uniswap V3 swaps" indexer silently missed every older
-  pool (58% of swaps in our test). The skill now loads older contracts first,
-  and says what to do when that pass is too slow.
+  pool (58% of swaps in our test). The skill now loads older contracts first.
+  When that pass is too slow, it indexes by event signature and confirms each
+  contract against the factory with a batched RPC check, which took under a
+  second for 3,475 contracts.
 - `pipes-sdk` validation is five checks that each caught a wrong result behind
   a clean exit: time bounds, row identity, formats, a bounded Portal
   comparison, and one source outside Portal. It works for Solana and
@@ -40,13 +43,16 @@ and the results were checked against RPC nodes and exchange APIs.
 - `pipes-sdk`: the fix for the CLI's incompatible contract types sits in the
   build steps with both commands, and the Solana template's stale row helper
   is listed next to it. A type check is now part of the build steps.
+- `pipes-sdk`: the schema guide told agents to store wide integers as
+  strings while the CLI generates `UInt256` and `Int256` columns. The guide
+  now matches the generated tables.
 - `pipes-sdk` and `portal`: Hyperliquid fills have no liquidation flag, and
   the dataset produces about 14 blocks a second, not one. Both skills said
   otherwise or said nothing.
 - `portal`: the time-to-block endpoint returns wrong blocks on Hyperliquid
   fills, Tron and Polkadot, and `404` for recent Bitcoin times. The skill now
   uses it only on EVM and Solana datasets and ships `scripts/block-at.sh` for
-  the rest.
+  the rest, which finds the block from header timestamps in 4 to 8 requests.
 - `portal`: the Solana volume estimate counted blocks instead of instructions.
 - `migrate-to-portal`: the Solana example kept `timestamp * 1000` after the
   upgrade, which stores dates tens of thousands of years ahead, because the

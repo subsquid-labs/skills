@@ -419,7 +419,7 @@ function classifyAsset(coin) {
 
 The dataset starts at block 750,000,000 and produces about 14 blocks per second (602,013 blocks in one 12-hour window on 2026-11-11), so block arithmetic from a date is off by a wide margin.
 
-Pass block numbers in `range`, and get them from block header timestamps. Both shortcuts fail on this dataset: an ISO date in `range` and Portal's `/timestamps/{ts}/block` endpoint resolve through the same lookup, which on `hyperliquid-fills` returned a block about two hours early for a time near the head. The **portal** skill's step 3 has the bisection script that returns the right block. Then filter rows on `fill.time` in the transform or in SQL, and check `min(timestamp)` and `max(timestamp)` against the window once the run ends.
+Pass block numbers in `range`, and get them from block header timestamps. Both shortcuts fail on this dataset: an ISO date in `range` and Portal's `/timestamps/{ts}/block` endpoint resolve through the same lookup, which on `hyperliquid-fills` returned a block about two hours early for a time near the head. The **portal** skill's step 3 has the lookup script that returns the right block in 4 to 8 requests (`scripts/block-at.sh`). Then filter rows on `fill.time` in the transform or in SQL, and check `min(timestamp)` and `max(timestamp)` against the window once the run ends.
 
 For a first run, take the last 6 to 24 hours. Twelve hours of BTC, ETH and SOL fills were 643,216 rows and synced in about 5 seconds.
 
