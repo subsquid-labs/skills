@@ -1,141 +1,102 @@
-# Data Validation & Quality Checks
+# Data Validation
 
-Run these checks after an indexer completes a sync to confirm production readiness.
+Run these after a sync, before reporting any number from the table. The SQL is ClickHouse; on PostgreSQL the same checks use `count(*)`, `count(DISTINCT (a, b))` and no `FINAL`. Column names follow the CLI's tables (`block_number`, `tx_hash`, `log_index`, `timestamp`); substitute your own.
 
-## Validation Levels
+A clean exit proves nothing about the data. Each check below caught a run that exited 0 with wrong or partial rows.
 
-### Level 1: Schema Validation (CRITICAL)
+## 1. Time bounds
 
 ```sql
--- Table exists
-SELECT count() FROM system.tables
-WHERE database = '<database>' AND name = '<table_name>';
-
--- Column types
-DESCRIBE <database>.<table_name>;
+SELECT min(timestamp), max(timestamp), min(block_number), max(block_number), count() FROM <table>;
 ```
 
-**Verify:**
-- Table exists
-- All expected columns present
-- Column types match design
-- Indexes created
-- Table engine correct
+Pass: both timestamps and both blocks fall inside the requested window, and the last row sits near the window's end.
 
-### Level 2: Data Quality (HIGH PRIORITY)
+| Result | Cause |
+|---|---|
+| Year 1970 or 9999 | Timestamp unit mismatch: [SDK_FEATURES.md](SDK_FEATURES.md#timestamp-handling-critical) |
+| `max(timestamp)` well short of the window's end | The end block was resolved wrong (Hyperliquid, Tron), or the run stopped early |
+
+## 2. Row identity
+
+Every row has an identity that appears once:
+
+| Chain | Identity |
+|---|---|
+| EVM logs | `(tx_hash, log_index)` |
+| Solana instructions | `(block_number, transaction_index, instruction_address)` |
+| Hyperliquid fills | `(block_number, fill_index)` |
 
 ```sql
--- Address format validation
-SELECT
-  countIf(length(pool_address) != 42) as invalid_length,
-  countIf(pool_address NOT LIKE '0x%') as missing_prefix,
-  countIf(NOT match(pool_address, '^0x[0-9a-fA-F]{40}$')) as invalid_format
-FROM <table_name>;
-
--- Transaction hash format
-SELECT
-  countIf(length(transaction_hash) != 66) as invalid_length,
-  countIf(transaction_hash NOT LIKE '0x%') as missing_prefix
-FROM <table_name>;
-
--- BigInt values
-SELECT
-  countIf(amount = '') as empty_amounts,
-  countIf(NOT match(amount, '^-?[0-9]+$')) as invalid_numbers
-FROM <table_name>;
-
--- NULLs
-SELECT
-  countIf(from_address IS NULL) as null_from,
-  countIf(to_address IS NULL) as null_to,
-  countIf(value IS NULL) as null_value
-FROM <table_name>;
+SELECT count() AS row_count, uniqExact(tuple(tx_hash, log_index)) AS identities FROM <table> FINAL;
 ```
 
-**Checks:**
-- Addresses are 42 chars (`0x` + 40 hex)
-- Transaction hashes are 66 chars (`0x` + 64 hex)
-- BigInt values are valid numbers
-- No unexpected NULLs
-- Block numbers in expected range
+Pass: the two numbers are equal.
 
-### Level 3: Completeness (MEDIUM PRIORITY)
-
-Event tables are sparse by definition: a block with no matching event produces no row. Do not treat gaps between event-bearing block numbers as ingestion gaps. Validate a bounded range against the same Portal filter instead.
+## 3. Formats and empty values
 
 ```sql
--- Bound the comparison to the exact range used in the Portal control query
 SELECT
-  count() AS event_count,
-  uniqExact(tuple(transaction_hash, log_index)) AS unique_events,
-  min(block_number) AS first_event_block,
-  max(block_number) AS last_event_block
-FROM <table_name> FINAL
+  countIf(NOT match(contract_address, '^0x[0-9a-f]{40}$')) AS bad_addresses,
+  countIf(NOT match(tx_hash, '^0x[0-9a-f]{64}$'))          AS bad_hashes,
+  countIf(amount = '' OR NOT match(amount, '^-?[0-9]+$'))  AS bad_amounts
+FROM <table>;
+```
+
+Pass: every count is 0. These are EVM formats; Solana addresses and signatures are base58, and Hyperliquid numbers are floats. The `bad_amounts` line is for `String` columns, where an empty amount means a `bigint` reached the row without `.toString()`. Drop it for the `UInt256` and `Int256` columns the CLI generates, which cannot hold a malformed value.
+
+## 4. A bounded window against Portal
+
+Query the same filter over 100 to 1,000 blocks with the **portal** skill's Stream API and compare with the table over the same blocks:
+
+```sql
+SELECT count(), uniqExact(tuple(tx_hash, log_index)) FROM <table> FINAL
 WHERE block_number BETWEEN <from_block> AND <to_block>;
-
--- Outliers in event density (diagnostic only)
-SELECT
-  block_number,
-  COUNT(*) as event_count
-FROM <table_name>
-GROUP BY block_number
-HAVING event_count > 1000
-ORDER BY event_count DESC
-LIMIT 10;
 ```
 
-**Checks:**
-- Count and `(transaction_hash, log_index)` identities match the closest Portal query over the same filter and bounded range
-- If full block coverage matters, persist a separate block-coverage table; do not infer it from an event table
-- Event counts reasonable
-- No duplicate events (same `tx_hash` + `log_index`)
+Pass: the counts match, and so does the set of identities. This check shares Portal with the indexer, so it proves the decoder, filters and inserts, and says nothing about Portal itself.
 
-### Level 4: Consistency (MEDIUM PRIORITY)
+Event tables are sparse: a block with no matching event has no row, so gaps between block numbers are expected.
 
-```sql
--- Block timestamps are monotonic
-SELECT
-  block_number,
-  block_timestamp,
-  lag(block_timestamp) OVER (ORDER BY block_number) as prev_timestamp
-FROM (
-  SELECT DISTINCT block_number, block_timestamp
-  FROM <table_name>
-  ORDER BY block_number
-)
-WHERE block_timestamp < prev_timestamp;
+A factory indexer over a window that starts after the factory's deployment needs one more check: a child known to predate the window has rows. See [PATTERNS.md](PATTERNS.md#contracts-created-by-a-factory).
+
+Hyperliquid: compare by `(block_number, fill_index)`. Counts per response differ because the SDK and Portal batch blocks differently ([Pattern 10](TROUBLESHOOTING.md#error-pattern-10-hyperliquid-validation--sdk-vs-portal-block-batching)).
+
+## 5. One source outside Portal
+
+When the answer matters, check a sample against a source that does not read from Portal:
+
+| Chain | Source | Compare |
+|---|---|---|
+| EVM | A public RPC: `eth_getLogs` for the contract over 100 to 300 blocks | Count, and the sum of one amount field |
+| Solana | `getBlock` on a public RPC for two or three slots | Count of matching instructions, inner ones included |
+| Hyperliquid | The exchange's `candleSnapshot` API | Hourly volume inside the candle's range |
+| Bitcoin | A block explorer API for one address or block | Count and total value |
+
+Public RPCs that answered `eth_getLogs` on two-day-old blocks without a key on 2026-11-12: `https://rpc.mevblocker.io` for Ethereum and `https://base-rpc.publicnode.com` for Base. `https://eth.drpc.org` and `https://ethereum-rpc.publicnode.com` answer `eth_call` and refused `eth_getLogs` that far back. <https://chainlist.org> lists endpoints for other chains.
+
+The Hyperliquid candle request, with times in milliseconds on hour boundaries:
+
+```bash
+curl -s https://api.hyperliquid.xyz/info -H 'content-type: application/json' \
+  -d '{"type":"candleSnapshot","req":{"coin":"BTC","interval":"1h","startTime":<hour-start-ms>,"endTime":<hour-end-ms-minus-1>}}'
 ```
 
-**Checks:**
-- Block timestamps increase with block numbers
-- Log indexes sequential within transactions
+Each candle's `v` is volume in the coin and `n` is the trade count. They equal `sum(sz) / 2` and `count() / 2` over the fills of that coin and hour.
 
-## Common Data Quality Issues
+Use `curl` for these and for Portal: Portal and several public RPCs answer `403` to Python's default `urllib` client. Free RPC endpoints often refuse `eth_getLogs` on old blocks or rate-limit batches, so try a second provider before giving up, and report the check as not run when none answers.
 
-### Issue 1: NULL Values in Required Fields
-**Cause:** Missing `.toString()` on BigInt values.
-**Fix:** `amount: transfer.event.value.toString()` (not the raw BigInt).
+## Before reporting amounts
 
-### Issue 2: Invalid Address Formats
-**Cause:** Incorrect extraction or transformation.
-**Fix:** Validate address format in the transformer.
+- **Token decimals.** On-chain amounts are integers in the token's smallest unit. Read `decimals()` from the token contract (USDC and USDT have 6, WBTC 8, most others 18) and divide. Assuming 18 is off by a factor of a trillion for USDC.
+- **Two fills per trade.** Each Hyperliquid trade produces a bid fill and an ask fill. Market volume is `sum(px * sz) / 2`; a user's own volume keeps all of that user's fills.
+- **Say what was counted.** State the window in UTC with its first and last block, and what one row means (a swap, a pool leg, a fill).
 
-### Issue 3: Portal Cross-Check Mismatch
-**Cause:** Range/filter mismatch, wrong ABI or proxy implementation, decoder differences, or an incorrect resume cursor.
-**Fix:** Compare the same bounded range and filter, inspect missing event identities, and only reset the confirmed pipe cursor after identifying the cause.
+## Final checklist
 
-## Final Checklist
-
-Before declaring success:
-
-- [ ] Table structure matches design
-- [ ] No NULL values in required fields
-- [ ] All addresses valid (42 chars, `0x` prefix, hex)
-- [ ] All transaction hashes valid (66 chars)
-- [ ] Bounded Portal count and event identities match
-- [ ] Data count increasing over time
-- [ ] Sample transactions match block explorer
-
-## Hyperliquid Note
-
-For Hyperliquid indexers, compare stable row identities such as `(block_number, fill_index)` and remember that each trade has one bid fill and one ask fill. Aggregate market-wide notional over all fills only after dividing by two or selecting one side.
+- [ ] Time bounds inside the requested window
+- [ ] Row count equals unique identities
+- [ ] No malformed addresses, hashes or amounts
+- [ ] A bounded window matches Portal by count and identity
+- [ ] For a factory indexer, a child older than the window has rows
+- [ ] Amounts divided by the token's real decimals

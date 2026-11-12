@@ -271,7 +271,7 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 | `px` | float | Execution price |
 | `sz` | float | Trade size/quantity |
 | `user` | string | Trader's 0x address |
-| `dir` | string | "Open Long", "Open Short", "Close Long", "Close Short", "Long > Short", "Short > Long", "Buy", "Sell", "Net Child Vaults" |
+| `dir` | string | Perpetuals: "Open Long", "Open Short", "Close Long", "Close Short", "Long > Short", "Short > Long". Spot: "Buy", "Sell". Also seen on 2026-11-11: "Settlement", "Split Outcome", "Merge Outcome", "Negate Outcome" |
 | `closedPnl` | float | Realized PnL (negative = loss, zero for opens) |
 | `fee` | float | Fee amount (negative = rebate) |
 | `feeToken` | string | Fee denomination (e.g., "USDC") |
@@ -282,6 +282,12 @@ Portal Stream API uses POST requests to `/datasets/hyperliquid-fills/stream`.
 | `startPosition` | float | Position size before this fill |
 | `cloid` | string/null | Client order ID |
 | `builderFee` | float/null | Builder fee |
+| `time` | integer | The fill's own timestamp, in milliseconds |
+| `fillIndex` | integer | Position within the block; `(block number, fillIndex)` identifies a fill |
+
+**No field marks a liquidation.** There is no `liquidation` field and no `dir` value for one. When the user asks for liquidations, say this dataset cannot identify them and report the count as unavailable. Zero would be a false answer.
+
+**Time windows.** The dataset produces about 14 blocks per second, and the `/timestamps` endpoint mixes seconds and milliseconds on it (SKILL.md, step 3). Resolve the window's blocks with `scripts/block-at.sh hyperliquid-fills hyperliquidFills <unix-seconds>`, then keep the fills whose `time` falls inside the window.
 
 ---
 

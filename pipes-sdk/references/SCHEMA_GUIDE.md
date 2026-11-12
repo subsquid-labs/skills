@@ -6,9 +6,9 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 
 | Solidity Type | ClickHouse Type | Reasoning |
 |---------------|-----------------|-----------|
-| `uint256`, `int256` | `String` | Avoids overflow; use `.toString()` in TypeScript |
-| `uint128`, `uint160`, `uint192`, `uint224` | `String` | Too large for native integers |
-| `uint64`, `uint96`, `uint112` | `String` | Safer as string (can be large) |
+| `uint256`, `int256` | `UInt256`, `Int256` | Native 256-bit integers, and what the CLI templates generate. Send the value with `.toString()` |
+| `uint128`, `uint160`, `uint192`, `uint224` | `UInt256` | Same; `UInt128` also fits `uint128` |
+| `uint64`, `uint96`, `uint112` | `UInt64`, `UInt128` | JavaScript numbers lose precision above 2^53, so send these with `.toString()` too |
 | `uint32` | `UInt32` | Safe as native integer |
 | `uint16` | `UInt16` | Safe as native integer |
 | `uint8` | `UInt8` | Safe as native integer |
@@ -20,6 +20,8 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 | block timestamp | `DateTime` or `DateTime64(3)` | Use DateTime64(3) for millisecond precision |
 | `bytes32` (market ID) | `FixedString(66)` | Same as tx hash — 0x + 64 hex |
 
+A `String` column also holds a wide integer, and some examples in these references use one. Arithmetic on it needs a cast (`toUInt256(value)`); keep the column type the scaffold generated.
+
 ## Table Engine Selection
 
 | Use Case | Engine | When to Use |
@@ -29,7 +31,7 @@ Reference for designing optimal ClickHouse schemas for blockchain data.
 | **Real-time state updates** | `CollapsingMergeTree(sign)` | Rollback via sign=-1 records |
 | **No reorg concern** | `MergeTree` | Rare; only for finalized data |
 
-**Default recommendation:** `ReplacingMergeTree(block_timestamp)`
+**In a CLI-generated project, keep the generated `CollapsingMergeTree(sign)` tables** (next paragraph). For a table you write by hand, `ReplacingMergeTree(block_timestamp)` is the simplest engine that handles reorgs.
 
 **CLI scaffold default:** the Pipes CLI now generates `CollapsingMergeTree(sign)` tables — each includes a `sign Int8 DEFAULT 1` column and an `INDEX _sqd_rollback_idx block_number TYPE minmax GRANULARITY 1`, not a plain `MergeTree`. This is what makes fork rollbacks propagate through materialized views: the target inserts `sign = -1` cancel rows for rolled-back blocks, and the minmax index keeps the block-range delete cheap. Prefer it over `ReplacingMergeTree` when downstream MVs must stay consistent across reorgs.
 
@@ -106,22 +108,7 @@ PARTITION BY toYYYYMM(block_timestamp)
 
 ## Timestamp Handling
 
-**CRITICAL**: choose the column type first, then match the JS value to its precision. There is no blanket "always divide by 1000" rule — the divisor depends on the column's declared precision.
-
-- **`DateTime`** (no precision arg) stores **seconds** since epoch → feed `Math.floor(d.timestamp.getTime() / 1000)`.
-- **`DateTime(3)` / `DateTime64(3)`** stores **milliseconds** → feed `d.timestamp.getTime()` undivided. ClickHouse parses the `DateTime(3)` column token as `DateTime64(3)`, so the stored ticks are epoch-**ms** and the raw `getTime()` value is already correct.
-
-```typescript
-// Column: DateTime  (seconds)
-timestamp: Math.floor(d.timestamp.getTime() / 1000),
-
-// Column: DateTime(3) / DateTime64(3)  (milliseconds) — the CLI default scaffold
-timestamp: d.timestamp.getTime(),  // do NOT divide
-```
-
-**Both** mismatches produce ~1970 dates: milliseconds into a seconds `DateTime`, *and* seconds into a millisecond `DateTime64(3)` (e.g. `1782669669` → `1970-01-21`). So a `1970-01-28`-style date only tells you the precision is mismatched — check the column type before deciding which way to convert.
-
-The `enrichEvents` helper emits **seconds** (matches a plain `DateTime`); the CLI's erc20/uniswap transformers emit `getTime()` ms (matches the `DateTime(3)` columns they generate).
+Choose the column type first, then send the value that matches it: seconds for `DateTime`, milliseconds for `DateTime(3)` / `DateTime64(3)`, and on ClickHouse 26.8 or later one client setting. The full rule is in [SDK_FEATURES.md](SDK_FEATURES.md#timestamp-handling-critical).
 
 ## Struct/Tuple Event Parameters
 
@@ -194,7 +181,7 @@ onRollback: async ({ reason, store, safeCursor }) => {
 
 Before finalizing a schema:
 - Every ABI field has a corresponding column (or documented reason for exclusion)
-- BigInt fields use `String` type
+- Wide integer fields use `UInt256` or `Int256` (or `String`), and reach the row through `.toString()`
 - Address fields use `FixedString(42)`
 - Standard blockchain columns are present
 - ORDER BY matches expected query patterns

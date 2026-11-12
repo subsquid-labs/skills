@@ -72,7 +72,8 @@ Canonical example matching `subsquid-labs/solana-example` going from `archive/v2
 -          slot: block.header.slot,
 +          slot: block.header.number,
            tx: ins.getTransaction().signatures[0],
-           timestamp: new Date(block.header.timestamp * 1000),
+-          timestamp: new Date(block.header.timestamp * 1000),
++          timestamp: new Date(block.header.timestamp),
          })
          // ... rest of handler unchanged
        }

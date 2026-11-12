@@ -489,13 +489,13 @@ docker ps | grep clickhouse
 Once environment is verified:
 
 1. **Create first indexer**: see TEMPLATES.md and the main SKILL.md workflow
-2. **Read workflow guide**: see PATTERNS.md for development workflow
+2. **Pick a decoder layout**: see PATTERNS.md
 3. **Test locally**: Use ClickHouse Local for development
 4. **Deploy**: see DEPLOYMENT.md for production deployment
 
 ## Related Documentation
 
-- PATTERNS.md - Indexing patterns and best practices
+- PATTERNS.md - Decoder layouts
 - DEPLOYMENT.md - Production deployment strategies
 - RESEARCH_CHECKLIST.md - Protocol research workflow
 

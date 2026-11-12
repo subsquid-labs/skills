@@ -373,6 +373,6 @@ Bun.serve({
 
 ## Related
 
-- [PATTERNS.md](./PATTERNS.md) — General indexing patterns
+- [PATTERNS.md](./PATTERNS.md) — decoder layouts
 - [PERFORMANCE.md](./PERFORMANCE.md) — Sync speed optimization
 - [SCHEMA_GUIDE.md](./SCHEMA_GUIDE.md) — table design guide

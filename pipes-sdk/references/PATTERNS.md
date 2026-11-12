@@ -1,779 +1,259 @@
-# Blockchain Indexing Patterns & Best Practices
+# Decoder Layouts
 
-For database commands and configuration, use [CREDENTIALS.md](CREDENTIALS.md): inject secrets through the environment or protected client files, and never print them or pass their values as command arguments.
+Each section is one way to tell an EVM pipe which logs to decode, with code that runs on `@subsquid/pipes` `1.0.0-beta.11`. SKILL.md step 1 picks the layout. Two rules hold for all of them:
 
-Advanced patterns, performance optimization, and troubleshooting for building production-grade blockchain indexers with Subsquid Pipes SDK.
+- `evmEventDecoder` requires `range`. Without it the pipe stops with `Cannot read properties of undefined (reading 'from')`.
+- The decoder's output is an object of arrays named after the keys of `events` (`data.swaps`, `data.transfers`). Map each array; `data` itself is not iterable.
 
-## Overview
+Errors, cursor resets and sync speed live in [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and [PERFORMANCE.md](PERFORMANCE.md).
 
-This document consolidates:
-- **Common Indexing Patterns** - Factory tracking, multi-event processing, aggregations
-- **Performance Optimization** - Throughput benchmarks and optimization techniques
-- **Error Handling** - Critical error patterns and solutions
-- **Production Best Practices** - Data quality, testing, deployment
+## Fixed contracts
 
-## When to Use This Reference
-
-Consult this documentation when you need to:
-- Implement specific indexing patterns (factory, multi-event, aggregations)
-- Optimize indexer performance
-- Troubleshoot common errors
-- Debug sync issues or missing data
-- Handle edge cases (proxy contracts, shared state)
-- Build production-grade indexers
-
-## Common Indexing Patterns
-
-### Basic Patterns
-
-#### 1. Single Contract Event Tracking
-- Track specific events from known contract
-- Simplest pattern, minimal overhead
-- **Use when**: Known address, single event type
-
-#### 2. Multiple Events from Single Contract
-- Track multiple event types (Deposit/Withdraw)
-- Related events from same contract
-- **Use when**: Need to process events differently
-
-### Intermediate Patterns
-
-#### 3. Factory Pattern with Pre-Indexing
-- Track dynamically deployed contracts
-- Wildcard vs pre-indexed approaches
-- **Use when**: Uniswap pools, protocol deployments
-
-#### 4. Topic0-Only Global Filtering
-- Track events across ALL contracts without knowing addresses
-- Omit `contracts` field from `evmEventDecoder` — filters by topic0 only
-- **Use when**: Event signature is unique to the protocol (ReallocateSupply, StrategyReported), factory-deployed contracts where you want all instances
-- **Don't use when**: Event signature is generic (Transfer, Deposit) — too many false positives
-- **Advantage over factory pattern**: Zero cold-start delay, no SQLite database needed, simpler setup
-- **Example**: MetaMorpho vault reallocations (evm/039), Yearn V2 strategy harvests (evm/037)
-
-#### 5. Parallel Event Decoding (multi-output)
-- Decode multiple independent event types via `outputs: { a: evmEventDecoder(...), b: evmEventDecoder(...) }`
-- Parallel processing
-- **Use when**: Unrelated events, different contracts
-
-#### 6. Event Parameter Filtering (Server-Side)
-- Filter by indexed parameters at Portal
-- Dramatically reduce bandwidth
-- **Use when**: High-volume contracts, known addresses
-- Two entries for the same event in one decoder must filter an indexed parameter on value lists that share no value; otherwise the decoder refuses to start with E0004. Put overlapping filters in separate `evmEventDecoder()` outputs (pattern 5). See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#e0004-two-evm-decoder-entries-match-the-same-log)
-
-#### 6. Factory Event Filtering
-- Filter factory creation events
-- Limit downstream processing
-- **Use when**: Only need subset of deployed contracts
-
-### Advanced Patterns
-
-#### 7. Multi-Stage Pipeline with Aggregations
-- Filter → Enrich → Aggregate → Persist
-- Complex transformations
-- **Use when**: Need reusable stages, complex logic
-
-#### 8. Custom Target Implementation
-- Write to custom format/storage
-- **Use when**: JSON files, S3, custom database
-
-#### 9. Memory Target (internal / testing only)
-- In-memory storage with rollback handling
-- **Not publicly importable**: `createMemoryTarget` exists in the SDK source but is **not** exported from the published package (still true in `1.0.0-beta.11`). There is no `./targets/memory` export and it is not re-exported from the root index, so application code cannot import it. (The beta CLI no longer offers a `memory` sink option at all.)
-- **Use when**: SDK-internal tests only — for a lightweight external option, use a custom target instead
-
-#### 10. RPC Latency Monitoring
-- Compare Portal vs RPC block-arrival latency by feeding a latency watcher into a stream's `outputs`
-- **API**: `evmRpcLatencyWatcher({ rpcUrl: string[] })` (from `@subsquid/pipes/evm`) and `bitcoinRpcLatencyWatcher({ rpcUrl, intervalMs? })` (from `@subsquid/pipes/bitcoin`), plus a Solana watcher — all wrap the generic `rpcLatencyWatcher({ watcher })`. Each emitted `LatencySample` carries `{ url, receivedAt, portalDelayMs }` and the RPC block hash.
-- **Use when**: Monitoring infrastructure, measuring Portal head lag against your own RPC providers
+One address, or a list of addresses that share an ABI. Each decoded row carries its emitter in `d.contract`.
 
 ```typescript
-import { evmPortalStream, evmRpcLatencyWatcher } from '@subsquid/pipes/evm'
+evmEventDecoder({
+  range: { from: 6082465 },
+  contracts: ['0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'],
+  events: {
+    transfers: commonAbis.erc20.events.Transfer,
+    approvals: commonAbis.erc20.events.Approval,
+  },
+}).pipe(({ transfers, approvals }) => ({
+  transfers: transfers.map((d) => ({
+    blockNumber: d.block.number,
+    txHash: d.rawEvent.transactionHash,
+    logIndex: d.rawEvent.logIndex,
+    contract: d.contract,
+    from: d.event.from,
+    to: d.event.to,
+    value: d.event.value.toString(),
+  })),
+  approvals: approvals.map((d) => ({ /* same shape */ })),
+}))
+```
 
-const stream = evmPortalStream({
-  id: 'indexing-latency',
-  portal: 'https://portal.sqd.dev/datasets/base-mainnet',
-  outputs: evmRpcLatencyWatcher({
-    rpcUrl: ['https://base.drpc.org', 'https://base-rpc.publicnode.com'],
+## Contracts created by a factory
+
+`contractFactory` reads the factory's creation event, stores each child address in SQLite, and decodes the `events` of the children it knows. The `uniswapV3Swaps` CLI template generates this layout.
+
+```typescript
+import { contractFactory, contractFactorySqliteStore, evmEventDecoder } from '@subsquid/pipes/evm'
+
+evmEventDecoder({
+  range: { from: 12369621 },   // the factory's deployment block
+  contracts: contractFactory({
+    address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
+    event: factoryEvents.PoolCreated,
+    childAddressField: 'pool',
+    database: contractFactorySqliteStore({ path: './uniswap3-eth-pools.sqlite' }),
+  }),
+  events: { swaps: poolEvents.Swap },
+})
+```
+
+Each row carries the creation event in `d.factory.event` (for Uniswap V3: `token0`, `token1`, `fee`).
+
+**The decoder knows only children created at or after `range.from`.** Events from older children are dropped with no error and no log line, so a recent window returns a plausible but partial table. Measured on Uniswap V3 over Ethereum blocks 12,376,000 to 12,377,000: the scaffold alone stored 677 swaps from 89 pools, and 1,600 swaps from 123 pools once the 52 older pools were loaded first.
+
+| The requested window | Do |
+|---|---|
+| Starts at the factory's deployment block | Use the decoder as above |
+| Starts later ("the last 48 hours") | Run the [history pass](#history-pass-for-a-window-that-starts-later) before the main pipe |
+| Starts later, and the history pass's ETA is longer than the task allows | [Index by topic0 and confirm each emitter](#when-the-history-pass-is-too-slow) |
+
+### History pass for a window that starts later
+
+Read the creation events from the factory's deployment block up to the block before the window, save them into the same store, then start the main pipe with that store. Put this ahead of the scaffold's `evmPortalStream` call in `src/index.ts`:
+
+```typescript
+const store = await contractFactorySqliteStore({ path: './uniswap3-eth-pools.sqlite' })
+await store.migrate()
+
+const history = evmPortalStream({
+  id: 'univ3-factory-history',
+  portal: 'https://portal.sqd.dev/datasets/ethereum-mainnet',
+  outputs: evmEventDecoder({
+    range: { from: 12369621, to: WINDOW_FROM_BLOCK - 1 },
+    contracts: ['0x1f98431c8ad98523631ae4a59f267346ea31f984'],
+    events: { created: factoryEvents.PoolCreated },
   }),
 })
 
-for await (const { data } of stream) {
-  if (!data) continue
-  console.table(data.rpc) // [{ url, receivedAt, portalDelayMs }]
+for await (const { data } of history) {
+  await store.save(
+    data.created.map((c) => ({
+      childAddress: c.event.pool,
+      factoryAddress: c.contract,
+      blockNumber: c.block.number,
+      transactionIndex: c.rawEvent.transactionIndex,
+      logIndex: c.rawEvent.logIndex,
+      event: c.event,
+    })),
+  )
 }
 ```
 
-Bitcoin uses the same shape with `bitcoinRpcLatencyWatcher` (polls Bitcoin Core JSON-RPC, no WebSocket) from `@subsquid/pipes/bitcoin`.
+Then pass `database: store` to `contractFactory` in the main decoder. The history range takes block numbers, so resolve the window's first block first (the **portal** skill, step 3).
 
-## Critical Error Patterns
+The pass has no cursor: it reruns from the deployment block on every start, and `save` skips addresses it already holds. For an indexer that restarts often, skip the pass when `(await store.all()).length > 0`.
 
-### 1. Missing range Parameter in evmEventDecoder
+Done when `sqlite3 <file>.sqlite "SELECT count(*) FROM factory"` is above zero before the main pipe logs its first block, and a child you know predates the window appears in the target table.
 
-**ERROR**: `TypeError: Cannot read properties of undefined (reading 'from')`
+### When the history pass is too slow
 
-**Cause**: The `range` parameter is **REQUIRED** in `evmEventDecoder` but was omitted.
+The history pass reads every block since the factory was deployed, one Portal data chunk per request. Its first progress line prints an ETA. On the shared public Portal that ETA was hours for Uniswap V3 on Ethereum (14 million blocks) on 2026-11-12. When the task cannot spend it:
 
-```typescript
-// WRONG - Missing range
-evmEventDecoder({
-  contracts: [CONTRACT_ADDRESS],
-  events: { deposit: abi.events.Deposit },
-})
+1. Index the window with [topic0 only](#any-contract-that-emits-the-event-topic0-only) and store the emitter in a `pool` column.
+2. Confirm each distinct emitter against the factory over RPC, batched through Multicall3 (code below). Write the confirmed addresses to their own table.
+3. Answer from the join: `WHERE pool IN (SELECT address FROM confirmed_pools)`.
 
-// CORRECT - Range included
-evmEventDecoder({
-  range: { from: 21_000_000 },  // REQUIRED!
-  contracts: [CONTRACT_ADDRESS],
-  events: { deposit: abi.events.Deposit },
-})
-```
+Step 2 is required because forks reuse event signatures. In one 48-hour Ethereum window, 325 of the 3,475 contracts that emitted the Uniswap V3 `Swap` signature were not pools of the official factory.
 
-### 2. Wrong Data Structure - Iterating Instead of Mapping
-
-**ERROR**: `TypeError: batch.data is not iterable`
-
-**Cause**: Using `for...of` loop on `batch.data` instead of accessing named event arrays.
+For Uniswap V3 the check reads the emitter's `token0()`, `token1()` and `fee()`, then asks the factory whether `getPool(token0, token1, fee)` is the emitter. With `viem` (`npm install viem`) and any public RPC for the chain:
 
 ```typescript
-// WRONG - Trying to iterate batch.data
-.pipe((batch) => {
-  for (const item of batch.data) {  // NOT iterable!
-    if (item.event.name === "deposit") { /* ... */ }
+import { createPublicClient, http, parseAbi } from 'viem'
+import { mainnet } from 'viem/chains'
+
+const client = createPublicClient({ chain: mainnet, transport: http(RPC_URL) })
+const poolAbi = parseAbi([
+  'function token0() view returns (address)',
+  'function token1() view returns (address)',
+  'function fee() view returns (uint24)',
+])
+const factoryAbi = parseAbi(['function getPool(address, address, uint24) view returns (address)'])
+
+// A call that reverted is an answer. Any other failure is a lost request: stop and rerun.
+const NOT_A_CHILD = ['ContractFunctionRevertedError', 'ContractFunctionZeroDataError']
+function answered<T extends { status: string; error?: Error }>(results: T[]): T[] {
+  for (const r of results) {
+    if (r.status === 'failure' && !NOT_A_CHILD.includes((r.error?.cause as Error)?.name)) throw r.error
   }
+  return results
+}
+
+const meta = answered(
+  await client.multicall({
+    batchSize: 2048,
+    contracts: emitters.flatMap((address) =>
+      (['token0', 'token1', 'fee'] as const).map((functionName) => ({ address, abi: poolAbi, functionName })),
+    ),
+  }),
+)
+const candidates = emitters.flatMap((address, i) => {
+  const [token0, token1, fee] = meta.slice(i * 3, i * 3 + 3)
+  if (token0.status !== 'success' || token1.status !== 'success' || fee.status !== 'success') return []
+  return [{ address, token0: token0.result as `0x${string}`, token1: token1.result as `0x${string}`, fee: fee.result as number }]
 })
-
-// CORRECT - Access named arrays and map
-.pipe((data) => {
-  const deposits = data.deposits.map((d) => ({
-    blockNumber: d.block.number,
-    txHash: d.rawEvent.transactionHash,
-    sender: d.event.sender,
-    assets: d.event.assets.toString(),
-  }));
-
-  return { deposits };
-})
+const pools = answered(
+  await client.multicall({
+    batchSize: 2048,
+    contracts: candidates.map((c) => ({
+      address: FACTORY, abi: factoryAbi, functionName: 'getPool', args: [c.token0, c.token1, c.fee],
+    } as const)),
+  }),
+)
+const confirmed = candidates.filter((c, i) => (pools[i].result as string | undefined)?.toLowerCase() === c.address.toLowerCase())
 ```
 
-### 3. Shared Sync Table Cursor Identity
+`emitters` is the list from `SELECT DISTINCT pool`, typed `` `0x${string}`[] ``. This confirmed 3,150 of 3,475 emitters in under one second on each of `eth.drpc.org`, `rpc.mevblocker.io` and `ethereum-rpc.publicnode.com`. Plain JSON-RPC batches of the same calls took nine minutes against those providers' rate limits.
 
-**SYMPTOM**: Indexer starts from wrong block (e.g., 27M instead of 21M)
+Keep `batchSize` at 2048 and keep `answered`. `multicall` reports a failed HTTP request as a `failure` on every call in that batch, the same status as a revert, so without the check a lost batch reads as hundreds of contracts that are not pools. A 16 KB batch failed that way on two of the three providers.
 
-**Cause**: Current targets isolate cursor rows by the source pipe `id` (or explicit target `settings.id`). A conflict means two pipes reused the same id, or a legacy static `stream` cursor was migrated ambiguously.
+## Any contract that emits the event (topic0 only)
 
-**Solution**:
-```bash
-# Preferred: use a separate database
-CLICKHOUSE_DATABASE=my_unique_db npm run dev
-
-# If sharing is deliberate, inspect ids and reset only the confirmed row
-docker exec clickhouse clickhouse-client \
-  --query "SELECT id, current, finalized FROM pipes.sync"
-docker exec clickhouse clickhouse-client \
-  --query "ALTER TABLE pipes.sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1"
-```
-
-**Prevention**: Always verify start block in logs:
-```bash
-tail -f indexer.log | head -1
-# Expected: "Start indexing from [your-block]"
-# Wrong: "Resuming from [different-block]"
-```
-
-### 4. ClickHouse Format Error
-
-**ERROR**: `Cannot parse input: expected '[' before: '{"blockNumber"...`
-
-**Cause**: Missing format specification in `store.insert()`.
+Omit `contracts`. Portal filters by the event's topic0 alone, and `d.contract` names the emitter.
 
 ```typescript
-// WRONG - Missing format
-await store.insert({
-  table: "transfers",
-  values: data,
-})
-
-// CORRECT - With format
-await store.insert({
-  table: "transfers",
-  values: data,
-  format: "JSONEachRow",  // REQUIRED!
-})
+evmEventDecoder({
+  range: { from: '2026-11-09T23:14:47Z', to: '2026-11-11T23:14:47Z' },
+  events: { swaps: poolEvents.Swap },
+}).pipe(({ swaps }) => swaps.map((s) => ({ pool: s.contract, ...s.event })))
 ```
 
-### 5. Wrong ClickHouse API
+Use it when the signature belongs to one protocol (`ReallocateSupply`, `StrategyReported`), or with the emitter check above. A generic signature such as `Transfer` matches every token on the chain.
 
-**ERROR**: `TypeError: clickhouse.insertTable is not a function`
+## Several decoders in one pipe
 
-**Cause**: Using outdated API from old documentation.
+Different ABIs on different contracts each get a decoder under a named key of `outputs`. The batch then has one entry per key.
 
 ```typescript
-// CORRECT - Current API
-import { clickhouseTarget } from "@subsquid/pipes/targets/clickhouse";
-import { createClient } from "@clickhouse/client";
-
-const client = createClient({
-  url: process.env.CLICKHOUSE_URL || "http://localhost:8123",
-  database: process.env.CLICKHOUSE_DATABASE || "default",
-  username: "default",
-  password: process.env.CLICKHOUSE_PASSWORD,
-});
-
-clickhouseTarget({
-  client,
-  onStart: async ({ store }) => {
-    await store.command({ query: "CREATE TABLE..." });
-  },
-  onData: async ({ store, data }) => {
-    await store.insert({
-      table: "transfers",
-      values: data,
-      format: "JSONEachRow",
-    });
+evmPortalStream({
+  id: 'transfers-and-swaps',
+  portal: 'https://portal.sqd.dev/datasets/base-mainnet',
+  outputs: {
+    transfers: evmEventDecoder({ range, contracts: [USDC], events: { transfer: commonAbis.erc20.events.Transfer } }),
+    pool: evmEventDecoder({ range, contracts: [POOL], events: { swap: poolEvents.Swap, mint: poolEvents.Mint } }),
   },
 })
+// data.transfers.transfer, data.pool.swap, data.pool.mint
 ```
 
-## Common Issues and Solutions (Continued)
+## Filter on indexed parameters
 
-### Issue 7: Indexer Crashed Mid-Sync — How to Resume
-
-**Symptoms**: Process was killed (OOM, terminal closed, machine restart). Partial data exists.
-
-**Solution**: The sync table tracks progress. Simply restart:
-```bash
-cd <project-folder>
-npm run dev
-```
-
-The indexer reads the sync table and resumes from the last committed block. Verify the "Resuming from X" log line shows the expected block.
-
-**If you want a clean restart instead**:
-```bash
-docker exec <container> clickhouse-client \
-  --query "ALTER TABLE pipes.sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1; DROP TABLE IF EXISTS pipes.<your_table>"
-npm run dev
-```
-
-Inspect `SELECT id, current, finalized FROM pipes.sync` first and substitute the exact pipe id. Do not drop the shared `sync` table unless the database is proven to belong only to this pipe.
-
-**Note**: On first-ever start, the sync table does not exist yet. The SDK logs an error (`Unknown table expression identifier 'pipes.sync'`) and then creates it. This is harmless — do not treat it as a failure.
-
-## Performance Optimization
-
-### Throughput Benchmarks
-
-| Pattern | Events/Second | Notes |
-|---------|--------------|-------|
-| Simple EVM decoder | ~23,000 | Single contract, no transformations |
-| EVM with ClickHouse | ~18,000 | Includes database writes |
-| EVM with PostgreSQL | ~12,000 | YMMV by database setup |
-| Multi-output (3 decoders) | ~15,000 | Parallel decoding overhead |
-| Multi-stage (4 stages) | ~8,000 | Each stage adds overhead |
-| Memory target | ~25,000 | No persistence overhead |
-
-### Optimization Techniques
-
-#### 1. Use Parameter Filtering
-
-**Impact**: Reduces bandwidth by 10-100x when targeting specific addresses.
+An entry of `events` can be `{ event, params }`. Portal applies the filter, so unmatched logs never leave the server. Only indexed parameters can be filtered, and each takes one value or a list.
 
 ```typescript
-// BAD: Fetch all, filter client-side
 evmEventDecoder({
-  range: { from: '2024-01-01' },
-  events: { transfer: commonAbis.erc20.events.Transfer },
-}).pipe((data) => {
-  return data.transfer.filter(t => t.event.from === TARGET);
-})
-
-// GOOD: Filter server-side
-evmEventDecoder({
-  range: { from: '2024-01-01' },
+  range: { from: 24171448, to: 24171449 },
   events: {
-    transfer: {
+    approvals: commonAbis.erc20.events.Approval,
+    transfers: {
       event: commonAbis.erc20.events.Transfer,
-      params: { from: TARGET },  // Filter at Portal!
+      params: { from: ['0x87482e84503639466fad82d1dce97f800a410945'], to: '0x10b32a54eeb05d2c9cd1423b4ad90c3671a2ed5f' },
     },
   },
 })
 ```
 
-#### 2. Minimize Transformation Stages
+Two entries for the same event in one decoder must filter an indexed parameter on value lists that share no value. Otherwise the decoder refuses to start with [E0004](TROUBLESHOOTING.md#e0004-two-evm-decoder-entries-match-the-same-log); put overlapping filters in separate decoders under `outputs`.
 
-**Impact**: Each stage adds 20-40% overhead.
+### Filter a factory's children
+
+The same `{ event, params }` form on the factory's creation event limits which children are tracked. This decodes swaps only from pools whose `token0` is WETH:
 
 ```typescript
-// BAD: 4 separate pipes
-.pipe(stage1)
-.pipe(stage2)
-.pipe(stage3)
-.pipe(stage4)
-
-// GOOD: Combine into 1-2 stages
-.pipe((data) => {
-  // Do all transformations here
-  return finalTransform(data);
+contractFactory({
+  address: '0x1f98431c8ad98523631ae4a59f267346ea31f984',
+  event: { event: factoryEvents.PoolCreated, params: { token0: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' } },
+  childAddressField: 'pool',
+  database: contractFactorySqliteStore({ path: './uniswap3-eth-pools.sqlite' }),
 })
 ```
 
-#### 3. Batch Inserts
+## Custom target
 
-**Impact**: 10-100x faster than individual inserts.
+For a destination no built-in target covers, `createTarget` from `@subsquid/pipes` takes a `write` function that reads batches:
 
 ```typescript
-// BAD: Insert one at a time
-for (const transfer of data.transfer) {
-  await db.insert(transfers).values(transfer);
-}
+import { createTarget } from '@subsquid/pipes'
 
-// GOOD: Batch insert
-await store.insert({
-  table: "transfers",
-  values: data.transfer,
-  format: "JSONEachRow",
-})
+await stream.pipeTo(
+  createTarget({
+    write: async ({ read, id }) => {
+      for await (const { data, ctx } of read(/* { latest, finalized } loaded from your store */)) {
+        // write data, then save ctx.stream.state.current under the pipe id
+      }
+    },
+  }),
+)
 ```
 
-#### 4. Use Pre-Indexing for Factory Patterns
+A custom target owns its cursor: pass the saved state to `read()` to resume, and save the batch's cursor in the same transaction as its rows. For a stream that includes unfinalized blocks, also implement `resolveFork`. The built-in targets do all of this, so reach for a custom one only when none of them fits ([SDK_FEATURES.md](SDK_FEATURES.md#target-configuration)).
 
-**Impact**: Targeted streaming is 5-10x faster than wildcards.
+## RPC latency watcher
+
+`evmRpcLatencyWatcher({ rpcUrl: string[] })` from `@subsquid/pipes/evm` measures how far Portal's head trails your RPC providers. `bitcoinRpcLatencyWatcher({ rpcUrl, intervalMs? })` from `@subsquid/pipes/bitcoin` does the same by polling Bitcoin Core.
 
 ```typescript
-// SLOW: Wildcard (but discovers all contracts)
-wildcardContracts: [{ address: "*", events: { swap } }]
-
-// FAST: Pre-indexed list (if you know addresses)
-contracts: [pool1, pool2, pool3, ...]
-```
-
-### Optimization Checklist
-
-- [ ] Use server-side parameter filtering for known addresses
-- [ ] Minimize transformation stages (1-2 stages max)
-- [ ] Batch database inserts (never one-by-one)
-- [ ] Choose appropriate database (ClickHouse vs PostgreSQL)
-- [ ] Use pre-indexing for factory patterns when possible
-- [ ] Monitor memory usage (keep < 500 MB)
-- [ ] Profile with metrics (enable profiling in development)
-- [ ] Test with small ranges before full deployment
-
-## Common Issues and Solutions
-
-### Issue 1: Pipeline Not Processing Events
-
-**Symptoms**: No events in database, pipeline runs but no output
-
-**Possible Causes**:
-- Wrong block range (events outside specified range)
-- Wrong contract address (typo or wrong network)
-- Wrong event signature (ABI mismatch)
-- Filter too restrictive (no events match)
-
-**Solution**:
-```typescript
-// 1. Verify contract address and block range
-evmEventDecoder({
-  range: { from: 21_230_000, to: 21_235_000 },
-  contracts: [USDC_ADDRESS.toLowerCase()], // Ensure lowercase
-  events: { transfer: commonAbis.erc20.events.Transfer },
+const stream = evmPortalStream({
+  id: 'indexing-latency',
+  portal: 'https://portal.sqd.dev/datasets/base-mainnet',
+  outputs: evmRpcLatencyWatcher({ rpcUrl: ['https://base.drpc.org', 'https://base-rpc.publicnode.com'] }),
 })
 
-// 2. Test without filter first
-// 3. Verify ABI matches contract
-// 4. Check for proxy contracts
-```
-
-### Issue 2: Pipeline Crashes with Out of Memory
-
-**Symptoms**: Process exits with OOM error
-
-**Solution**:
-```typescript
-// Use database target instead of memory
-await stream.pipeTo(clickhouseTarget({ /* config */ }))
-
-// Process in batches
 for await (const { data } of stream) {
-  await persistBatch(data);
+  if (data) console.table(data.rpc) // [{ url, receivedAt, portalDelayMs }]
 }
 ```
-
-### Issue 3: Slow Performance
-
-**Symptoms**: Pipeline takes hours for small dataset
-
-**Solution**: Apply optimization techniques from Performance section
-
-### Issue 4: Data Missing After Restart
-
-**Symptoms**: Pipeline restarts from beginning
-
-**Solution**: Implement cursor saving in custom target
-
-### Issue 5: Duplicate Data After Chain Reorganization
-
-**Symptoms**: Duplicate records after reorg
-
-**Solution**: Implement fork handler to handle rollbacks. On the ClickHouse target that is an `onRollback` hook calling `store.removeRowsAfter(safeCursor, { tables })`; see [SDK_FEATURES.md](SDK_FEATURES.md#clickhouse).
-
-### Issue 6: Events Not Decoded Correctly
-
-**Symptoms**: Event fields are undefined or wrong values
-
-**Possible Causes**:
-- Wrong ABI (event signature mismatch)
-- Wrong contract (different ABI version)
-- Proxy contract (need implementation ABI)
-
-**Solution**:
-```bash
-# Save and validate abi/contract.json following ABI_GUIDE.md, then regenerate
-npx @subsquid/evm-typegen@4.6.0 src/contracts ./abi/contract.json
-```
-
-### Issue 8: Sync Table Conflict Between Indexers
-
-**Symptoms**: Second indexer resumes from wrong block, produces wrong data or no data
-
-**Cause**: Two indexers reused the same source pipe `id` or explicit target `settings.id`, or a legacy pre-alpha.15 `stream` cursor was migrated to the wrong pipe.
-
-**Solution**: Use a dedicated database per indexer project:
-```bash
-# Create separate databases
-docker exec <container> clickhouse-client \
-  --query "CREATE DATABASE IF NOT EXISTS usdc_transfers"
-docker exec <container> clickhouse-client \
-  --query "CREATE DATABASE IF NOT EXISTS uniswap_swaps"
-```
-
-If you must share a database, pin a unique id per pipe. Before a reset, inspect the table and delete only the confirmed cursor row:
-```bash
-docker exec <container> clickhouse-client \
-  --query "SELECT id, current, finalized FROM <database>.sync"
-docker exec <container> clickhouse-client \
-  --query "ALTER TABLE <database>.sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1"
-```
-
-Do not drop or truncate a shared `sync` table; that resets every pipe using it.
-
-### Issue 9: Custom Template Table Names
-
-**Symptoms**: Querying `{contractName}_events` returns "table not found"
-
-**Cause**: The custom template creates **one table per event**, not a combined events table. Contract-specific decoders use `{contractName}_{eventName}` in snake_case; shared decoders across compatible contracts use `{eventName}` and add a `contractAddress`/`contract_address` column.
-
-**Example**: Contract "WETH" with events "Deposit" and "Withdrawal" creates:
-- `weth_deposit` (not `weth_events`)
-- `weth_withdrawal`
-
-**Solution**: Query each table separately, or create a VIEW to combine them:
-```sql
-CREATE VIEW weth_events AS
-  SELECT 'deposit' as event_type, dst as address, wad, block_number, tx_hash, timestamp FROM weth_deposit
-  UNION ALL
-  SELECT 'withdrawal' as event_type, src as address, wad, block_number, tx_hash, timestamp FROM weth_withdrawal
-```
-
-### Issue 10: Timestamps Show 1970 Dates in ClickHouse
-
-**Symptoms**: All timestamps in ClickHouse display as `1970-01-28` or similar early dates, even though the indexer is processing recent blocks.
-
-**Cause**: The JS value's precision doesn't match the ClickHouse column's. The divisor depends on the **column type**, not a blanket rule:
-- `DateTime` (no precision arg) stores **seconds** → feed `Math.floor(getTime()/1000)`. Passing raw ms (`getTime()`) lands in 1970.
-- `DateTime(3)` / `DateTime64(3)` stores **milliseconds** (ClickHouse parses `DateTime(3)` as `DateTime64(3)`) → feed `getTime()` undivided. Passing seconds here **also** lands in 1970 (e.g. `1782669669` → `1970-01-21`).
-
-Because **both** mismatches produce ~1970 dates, "1970" alone doesn't tell you which direction is wrong — check the column type first with `DESCRIBE TABLE`.
-
-**Solution**: Match the JS value to the column precision:
-```typescript
-// Column: DateTime  (seconds)
-timestamp: Math.floor(d.timestamp.getTime() / 1000),
-
-// Column: DateTime(3) / DateTime64(3)  (milliseconds) — the CLI default scaffold
-timestamp: d.timestamp.getTime(),  // do NOT divide
-```
-
-**Note**: CLI-generated tables use `timestamp DateTime(3)` and the generated erc20/uniswap transformers emit `getTime()` (ms, undivided) — so blanket-dividing by 1000 breaks the default scaffold. The `enrichEvents` helper (used only by the `custom` templates) emits **seconds**, matching a plain `DateTime` column.
-
-**Recovery**: If you've already inserted bad timestamps:
-```bash
-# Inspect the cursor ids, then remove only this pipe's row and affected table
-docker exec <container> clickhouse-client \
-  --query "ALTER TABLE <db>.sync DELETE WHERE id = '<confirmed-pipe-id>' SETTINGS mutations_sync=1; DROP TABLE IF EXISTS <db>.<table>"
-# If using factory pattern, also delete the SQLite file
-rm <project>/*.sqlite
-# Restart
-npm run dev
-```
-
-### Issue 11: Proxy Contract Crashes Indexer on Startup
-
-**Symptoms**: Indexer crashes immediately with `TypeError: Cannot read properties of undefined (reading 'topic')` at `evmEventDecoder`.
-
-**Cause**: The contract is behind a proxy (EIP-1967, TransparentUpgradeableProxy, etc.). Both the CLI and `evm-typegen` fetch the proxy ABI, which only contains the `Upgraded` event. The generated `index.ts` references events (e.g., `Supply`, `Borrow`) that don't exist in the proxy ABI.
-
-**Detection**: After CLI generation, inspect the contract file:
-```bash
-grep "export const events" src/contracts/*.ts
-# Proxy: only "Upgraded" event
-# Implementation: all expected events (Supply, Borrow, Swap, etc.)
-```
-
-**Solution**:
-1. Find implementation address: Go to `https://etherscan.io/address/<proxy>` → "Read as Proxy" tab → copy implementation address
-2. Generate types from implementation:
-   ```bash
-   # First save and validate the local ABI following ABI_GUIDE.md
-   npx @subsquid/evm-typegen@4.6.0 src/contracts ./abi/implementation.json
-   ```
-3. Update import in `src/index.ts` to point to the implementation file
-4. Keep the proxy address in `contracts:` array (events are emitted from the proxy)
-
-**Common proxy contracts**: Aave V3 Pool, Compound V3, Lido stETH, USDC. Rule of thumb: if it's a major DeFi protocol, assume proxy until proven otherwise.
-
-### Issue 12: Factory Indexer Shows Zero Data for 30-60+ Seconds
-
-**Symptoms**: Factory-pattern indexer starts successfully, syncs blocks, but produces zero rows in the database for an extended period.
-
-**Cause**: The factory pattern only discovers child contracts from the `range.from` block forward. If the factory hasn't deployed any new child contracts in the blocks being synced, there's nothing to track yet.
-
-**This is expected behavior, not a bug.**
-
-**When to worry vs. when to wait**:
-- If the factory is active (deploying new contracts regularly): wait 60-90 seconds
-- If the factory is inactive (no new deployments in your block range): you'll never get data until the indexer reaches a block where the factory creates a new child
-- If you need ALL historical child contracts: set `range.from` to the factory's deployment block
-
-**Verification**:
-```bash
-# Check if the factory SQLite database is being populated
-ls -la <project>/*.sqlite
-# Size > 0 means child contracts are being discovered
-
-# Check how many child contracts have been found
-sqlite3 <project>/*.sqlite "SELECT COUNT(*) FROM factory_contracts" 2>/dev/null || echo "No contracts yet"
-```
-
-## Pattern Selection Guide
-
-### Single Contract Event Tracking
-**Use when**:
-- Known contract address
-- Single event type
-- Simple transformations
-
-### Factory Pattern
-**Use when**:
-- Dynamically deployed contracts
-- Need all historical deployments
-- Known contract list
-
-### Parallel Decoding (multi-output)
-**Use when**:
-- Multiple independent event types
-- Different contracts
-- Want parallel processing
-
-**DON'T use when**:
-- Events depend on each other
-- Single contract
-
-### Multi-Stage Pipeline
-**Use when**:
-- Complex transformations
-- Multiple data formats needed
-- Reusable transformation logic
-
-**DON'T use when**:
-- Simple event → database mapping
-- Performance critical
-
-### Parameter Filtering
-**Use when**:
-- Known addresses to track
-- High-volume contracts
-- Indexed parameters available
-
-**DON'T use when**:
-- Need all events anyway
-- Non-indexed parameters
-
-### Custom Target
-**Use when**:
-- Custom data format (JSON, CSV, Parquet)
-- Custom storage (S3, GCS, IPFS)
-- Custom database not supported
-
-**DON'T use when**:
-- ClickHouse (use clickhouseTarget)
-- PostgreSQL (use drizzleTarget)
-
-### Memory Target
-**Not publicly importable; still true in 1.0.0-beta.11** (SDK-internal / testing only; see pattern #9). For a lightweight external store, use a custom target. Characteristics of the internal target:
-
-**Use when**:
-- SDK-internal testing
-- Small datasets (< 10M records)
-- No persistence needed
-
-**DON'T use when**:
-- Application code (it cannot be imported)
-- Large datasets
-- Need persistence across restarts
-
-## Production Best Practices
-
-### 1. Error Prevention
-
-- Always include `range` in `evmEventDecoder`
-- Always use `.map()` on named event arrays
-- Always include `format: "JSONEachRow"` in ClickHouse inserts
-- Always convert BigInt to string before JSON serialization
-- Always clear sync table when starting new indexer
-
-### 2. Performance Optimization
-
-- Use server-side parameter filtering for high-volume contracts
-- Minimize transformation stages (1-2 max)
-- Batch database inserts
-- Monitor memory usage (< 500 MB)
-- Test with small ranges before full deployment
-
-### 3. Data Quality
-
-- Verify data within 30 seconds of starting
-- Check for NULL values in critical fields
-- Validate addresses, amounts, timestamps
-- Monitor row count increasing over time
-- Implement fork handler for rollback protection
-
-### 4. Debugging Workflow
-
-1. Check logs for error messages
-2. Enable profiling to measure performance
-3. Test with small range (100 blocks)
-4. Verify data in database with SQL queries
-5. Review TROUBLESHOOTING.md for matching pattern
-
-## Database Comparison: ClickHouse vs PostgreSQL
-
-### ClickHouse (Recommended for Analytics)
-
-**Pros**:
-- 5-10x faster for analytical queries
-- Efficient columnar storage
-- Excellent for time-series data
-- Better compression (smaller storage)
-
-**Cons**:
-- No strong ACID transactions
-- Limited UPDATE/DELETE support
-- Less familiar for web developers
-
-**Best for**:
-- Analytics dashboards
-- Historical data analysis
-- High-volume event streams
-- Aggregation-heavy queries
-
-### PostgreSQL (Recommended for Relational)
-
-**Pros**:
-- ACID transactions
-- Rich query capabilities (JOINs, subqueries)
-- More familiar to developers
-- Better tooling ecosystem
-
-**Cons**:
-- Slower for large analytical queries
-- Higher storage requirements
-- More expensive to scale
-
-**Best for**:
-- Relational data models
-- Transactional workloads
-- Complex queries with JOINs
-- Web application backends
-
-## Key Pattern Principles
-
-### 1. Start Simple, Scale Smart
-
-```typescript
-// Start: Single contract, simple events
-evmEventDecoder({
-  range: { from: RECENT_BLOCK },  // Test with recent blocks
-  contracts: [CONTRACT],
-  events: { transfer: abi.Transfer },
-})
-
-// Scale: Add filtering, expand range
-evmEventDecoder({
-  range: { from: DEPLOYMENT_BLOCK },  // Full history
-  contracts: [CONTRACT],
-  events: {
-    transfer: {
-      event: abi.Transfer,
-      params: { from: TARGET_ADDRESSES },  // Filter
-    },
-  },
-})
-```
-
-### 2. Test Before Deploying
-
-```bash
-# Always test with small range first
-range: { from: 21_230_000, to: 21_230_100 }  # 100 blocks
-
-# Then expand
-range: { from: 21_230_000, to: 21_235_000 }  # 5,000 blocks
-
-# Finally full history
-range: { from: DEPLOYMENT_BLOCK }
-```
-
-### 3. Verify Data Immediately
-
-```bash
-# Check within 30 seconds of starting
-docker exec clickhouse clickhouse-client \
-  --query "SELECT COUNT(*) FROM pipes.my_table"
-
-# Should be > 0
-# If 0: Check logs, verify contract, check ABI
-```
-
-### 4. Handle Edge Cases
-
-```typescript
-// Always convert BigInt to string
-value: transfer.event.value.toString()
-
-// Always use rawEvent for transaction hash
-txHash: transfer.rawEvent.transactionHash
-
-// Always include format in ClickHouse inserts
-format: "JSONEachRow"
-
-// Always check for proxy contracts
-// Use implementation ABI, not proxy ABI
-```
-
-## Key Takeaways
-
-1. **Start with proven patterns** - Use validated patterns from reference docs
-2. **Read error catalog first** - Most errors are documented with solutions
-3. **Optimize early** - Use parameter filtering from the start
-4. **Test small** - Always test with recent blocks first
-5. **Verify immediately** - Check data within 30 seconds
-6. **Monitor continuously** - Use profiling and metrics in production
-
-## Related Documentation
-
-- RESEARCH_CHECKLIST.md - Protocol research workflow
-- ENVIRONMENT_SETUP.md - Development prerequisites
-- DEPLOYMENT_OPTIONS.md - Production deployment strategies

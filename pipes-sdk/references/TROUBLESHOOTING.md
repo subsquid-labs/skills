@@ -166,40 +166,34 @@ See [ABI_GUIDE.md](ABI_GUIDE.md) for the full proxy handling guide, including no
    ```
    Fix: use a separate database per indexer. If sharing is deliberate, confirm the pipe id and delete only that cursor row; never drop a shared `sync` table.
 
-## Error Pattern 5b: Factory Indexer Shows Zero Data
+## Error Pattern 5b: Factory Indexer Misses Children
 
-**Symptoms:** Factory-pattern indexer syncs blocks but DB has 0 rows for 30–60+ seconds.
+**Symptoms:** A factory-pattern indexer syncs blocks and stores no rows, or stores far fewer than the protocol's activity suggests. There is no error.
 
-**Diagnosis:** The factory pattern only discovers child contracts from `range.from` forward. If no new children were created in the synced range, there's no data yet.
+**Cause:** The factory decoder knows only the children whose creation event it has read, which means children created at or after `range.from`. Events from older children are dropped silently.
 
-**This is expected, not a bug.**
+**Fix:** For full history, set `range.from` to the factory's deployment block. For a window that starts later, load the older children first with the [history pass](PATTERNS.md#history-pass-for-a-window-that-starts-later).
 
-**Fix:**
-- Wait 60–90 seconds
-- To track ALL historical children, set `range.from` to the factory's deployment block
-- Verify contracts are being discovered: `ls -la <project>/*.sqlite` (size > 0)
+**Check:** `sqlite3 <project>/<file>.sqlite "SELECT count(*) FROM factory"` counts the children the decoder knows.
 
-## Error Pattern 5c: Timestamps Show 1970 Dates
+## Error Pattern 5c: Timestamps Show 1970 or 9999
 
-**Symptoms:** All dates in ClickHouse show as `1970-01-28`, `1970-01-21`, or similar.
+**Symptoms:** Dates in ClickHouse show as `1970-01-21` or similar, or every timestamp is `9999-12-31 23:59:59`, in a data table or in `sync`.
 
-**Diagnosis:** The JS value's precision doesn't match the column's — and this fails in **both** directions, so "1970" alone doesn't tell you which way. Check the column type first:
+**Diagnosis:** Read the server version and the column type, then apply the rule in [SDK_FEATURES.md](SDK_FEATURES.md#timestamp-handling-critical):
+
 ```bash
-docker exec clickhouse clickhouse-client \
-  --query "DESCRIBE TABLE <db>.<table>" | grep timestamp
+docker exec <container> clickhouse-client --query "SELECT version()"
+docker exec <container> clickhouse-client --query "DESCRIBE TABLE <db>.<table>" | grep -i timestamp
 ```
-ClickHouse parses `DateTime(3)` as `DateTime64(3)` (millisecond precision). A **seconds** value in that column lands in 1970 just as badly as a **milliseconds** value in a plain `DateTime` (verified: `1782669669` → `1970-01-21`).
 
-**Fix:** Match the JS value to the column precision:
+| What you see | Cause | Fix |
+|---|---|---|
+| `9999-12-31` everywhere, server 26.8 or later | The server reads a bare number for `DateTime64` as seconds, and the value is milliseconds | Add `input_format_read_datetime_number_as_raw_value: 1` to the client's `clickhouse_settings` |
+| 1970, column `DateTime(3)` / `DateTime64(3)` | A seconds value in a millisecond column | Send `d.timestamp.getTime()` undivided |
+| 1970 or a far-future year, column `DateTime` | A milliseconds value in a seconds column | Send `Math.floor(d.timestamp.getTime() / 1000)` |
 
-| Column type | Precision | Correct JS value |
-|-------------|-----------|------------------|
-| `DateTime` | seconds | `Math.floor(d.timestamp.getTime() / 1000)` |
-| `DateTime(3)` / `DateTime64(3)` | milliseconds | `d.timestamp.getTime()` (do **not** divide) |
-
-CLI-generated tables use `timestamp DateTime(3)`, so the scaffold's transformers correctly emit undivided `getTime()` — do **not** "fix" them by dividing. The `enrichEvents` helper (custom templates only) emits seconds, matching a plain `DateTime` column.
-
-**Recovery:** Drop this pipe's data tables, delete its cursor row (`SELECT id, current, finalized FROM <db>.sync`, confirm the id, then delete that row), delete the SQLite file if it is a factory indexer, and restart.
+**Recovery:** Stored values stay wrong after the fix. Drop this pipe's data tables, delete its cursor row (`SELECT id, current, finalized FROM <db>.sync`, confirm the id, then delete that row), delete the SQLite file if it is a factory indexer, and restart.
 
 ## Error Pattern 6: Memory Issues
 
@@ -409,10 +403,11 @@ Parquet output directory './out' holds another pipe's state (_sqd_parquet_state.
 
 **Fix:** free space or repair the volume, then restart. Keep the state file on a persistent volume sized for the outbox backlog, never on ephemeral container storage.
 
-## Prevention Tips
+## Errors From Hand-Written Pipe Code
 
-1. **Always use Pipes CLI** — never manually create indexer files
-2. **Verify environment first** — see [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)
-3. **Start with recent blocks** — faster iteration, faster failures
-4. **Check proxy status** before running — single biggest failure mode
-5. **Use dedicated databases** — prevents sync table conflicts
+| Error or symptom | Cause | Fix |
+|---|---|---|
+| `Cannot read properties of undefined (reading 'from')` at `evmEventDecoder` | `range` is missing | Add `range: { from: ... }`; it is required |
+| `batch.data is not iterable` | The decoder output was looped over | Map the named arrays: `data.transfers.map(...)` |
+| `Cannot parse input: expected '[' before: '{"blockNumber"...` | `store.insert` without a format | Add `format: 'JSONEachRow'` |
+| `Table ... {contractName}_events` not found on a `custom` project | The template writes one table per event | Query `{contractName}_{eventName}` in snake_case, for example `weth_deposit` |

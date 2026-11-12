@@ -187,14 +187,14 @@ These boolean flags pull related data when filtering inputs or outputs:
   }],
   "fields": {
     "block": {"number": true, "timestamp": true},
-    "transaction": {"txid": true},
+    "transaction": {"transactionIndex": true, "txid": true},
     "output": {"transactionIndex": true, "outputIndex": true, "value": true, "scriptPubKeyAddress": true}
   }
 }
 ```
 
 **Notes:**
-- `transaction: true` on the output filter pulls the parent transaction's txid
+- `transaction: true` on the output filter pulls the parent transaction. Outputs and transactions arrive as separate arrays in each block, so select `transactionIndex` on both and join on it to give each output its `txid`
 - Values are in **BTC** (float), not satoshis — e.g., `0.54199819` = 0.542 BTC
 
 ---

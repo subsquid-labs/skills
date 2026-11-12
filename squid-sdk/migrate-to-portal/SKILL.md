@@ -4,7 +4,7 @@ description: Migrate a Squid SDK indexer (EVM or Solana) from the v2 gateway to 
 license: Apache-2.0
 metadata:
   author: subsquid
-  version: "1.2.3"
+  version: "1.2.4"
   category: documentation
 ---
 
@@ -36,7 +36,9 @@ The v2 gateways are being shut down dataset by dataset, and self-hosted v2 calls
 
 6. **Work on a branch,** with Node.js 22 or later. The migration rewrites imports, types and the processor entry point.
 
-Done when you can state the chain, the Portal slug that answered `200` and has no announced retirement (or the end date the user accepted), real-time or finalized-only, and whether the handler reads from RPC.
+7. **Record the baseline.** Run `npm install` and `npx tsc --noEmit` before changing anything and keep the output. An error that is already there, such as a generated ABI module that no longer matches the installed `@subsquid/evm-abi`, is the project's and has its own fix in `references/common-errors.md`. Without the baseline it reads as a migration failure and sends you through the migration steps looking for it.
+
+Done when you can state the chain, the Portal slug that answered `200` and has no announced retirement (or the end date the user accepted), real-time or finalized-only, whether the handler reads from RPC, and which type errors existed before the migration.
 
 ## 2. Run the chain's steps
 
@@ -65,9 +67,10 @@ Hot-block support lets the store roll back forked blocks once the indexer reache
    grep -RnE "v2\.archive\.subsquid\.io|setGateway|setRpcEndpoint|setFinalityConfirmation|lookupArchive|SolanaRpcClient|@subsquid/(evm-processor|archive-registry)" src package.json
    ```
 2. `npx tsc --noEmit` exits `0`. Look each remaining error up by its message in `references/common-errors.md`.
-3. A local run processes blocks: build and start the squid the way the project does (commonly `npm run build`, `npx squid-typeorm-migration apply`, `node --require=dotenv/config lib/main.js`), and watch the processor log progress past the configured start block while rows land in the store. A real-time squid keeps running after it reaches the head.
+3. A local run processes blocks: build and start the squid the way the project does (its `README.md` and `commands.json` name the commands; commonly `npm run build`, `npx squid-typeorm-migration apply`, `node --require=dotenv/config lib/main.js`), and watch the processor log progress past the configured start block while rows land in the store. A real-time squid keeps running after it reaches the head.
+4. Stored rows are right: pick three rows, and compare each with the chain through a public RPC (the EVM transaction receipt's log, or Solana `getBlockTime` for the slot's timestamp). A timestamp in 1970 or tens of thousands of years ahead is a unit error from the handler; see the chain's steps.
 
-Done when all three hold.
+Done when all four hold.
 
 ## 5. Re-sync and deploy
 

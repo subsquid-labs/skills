@@ -3,6 +3,8 @@
 
 Specialized agent for analyzing blockchain indexer performance and suggesting optimizations to reduce sync time while maintaining data completeness.
 
+**Check the log for `529` first.** Repeated `529` `overloaded` warnings mean Portal is throttling the stream. The SDK waits and resends, and no pipe setting changes that: a 24-hour USDC range on Base synced at about 360 blocks per second under throttling on 2026-11-12. The speeds quoted below assume a Portal that is not throttling.
+
 ## When to Use This Skill
 
 Activate when:
@@ -283,7 +285,7 @@ Don't optimize if:
 ## Related
 
 - [pipes-sdk SKILL.md](../SKILL.md) — scaffolding, troubleshooting, validation
-- [PATTERNS.md](./PATTERNS.md) — performance patterns and benchmarks
+- [PATTERNS.md](./PATTERNS.md) — decoder layouts: fixed contracts, factories, topic0-only, parameter filters
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — error patterns and fixes
 
 ## Official Subsquid Documentation
