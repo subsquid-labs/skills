@@ -51,6 +51,8 @@ evmEventDecoder({ range: { from: 'latest' }, ... })
 
 **Validation:** Inverted ranges (`from > to`) and unresolvable timestamps throw `BlockRangeConfigurationError` (E0002).
 
+Dates resolve through Portal's `/timestamps/{ts}/block` lookup, which is right on EVM chains and Solana and wrong on `hyperliquid-fills` (about two hours early near the head, measured 2026-11-11) and on `tron-mainnet` near the head. On those two datasets pass block numbers found from header timestamps (the **portal** skill, step 3).
+
 ## `defineAbi` — Use JSON ABIs Without Codegen
 
 `defineAbi()` converts a standard JSON ABI into decoder objects at runtime — no `squid-evm-typegen` step needed.
@@ -348,32 +350,28 @@ When using `evmEventDecoder` with a manual `.pipe()` transform, each decoded eve
 
 **⚠️ DateTime64(3) gotcha:** For `DateTime64(3, 'UTC')` columns, pass ISO strings via `d.timestamp.toISOString()` with `date_time_input_format: 'best_effort'`. Passing epoch seconds (e.g., `1700392127`) is misinterpreted as `1970-01-20`.
 
-The CLI-generated `enrichEvents` helper (in `src/utils/index.ts`) flattens into `{ ...event, blockNumber, txHash, logIndex, timestamp /* unix SECONDS */, contractAddress }`. It is used **only by the `custom` templates** — the `erc20Transfers`/`uniswapV3Swaps` templates use inline `.pipe()` maps instead, and those emit `timestamp` in **milliseconds** (not seconds; see Timestamp Handling).
+The CLI-generated `enrichEvents` helper (in `src/utils/index.ts`) flattens into `{ ...event, blockNumber, txHash, logIndex, timestamp /* unix seconds */, contractAddress }`. Only the `custom` templates use it; `erc20Transfers` and `uniswapV3Swaps` use inline `.pipe()` maps that emit milliseconds.
 
 ## Timestamp Handling (CRITICAL)
 
-`d.timestamp.getTime()` returns **milliseconds**. Whether you divide by 1000 depends on the **ClickHouse column precision** — there is no blanket rule:
+`d.timestamp` is a JS `Date`, and `d.timestamp.getTime()` is milliseconds. What to send depends on the ClickHouse column, and from ClickHouse 26.8 on, on one client setting.
 
-| Column type | Stored ticks | Convert `d.timestamp` with |
-|-------------|--------------|----------------------------|
-| `DateTime` (no precision arg) | seconds | `Math.floor(d.timestamp.getTime() / 1000)` |
-| `DateTime(3)` / `DateTime64(3)` | **milliseconds** | `d.timestamp.getTime()` — **no division** |
+| Column type | Stores | Send |
+|-------------|--------|------|
+| `DateTime` | seconds | `Math.floor(d.timestamp.getTime() / 1000)` |
+| `DateTime(3)` / `DateTime64(3)` | milliseconds | `d.timestamp.getTime()`, undivided |
+| either, as text | parsed text | `d.timestamp.toISOString()`, with `date_time_input_format: 'best_effort'` on the client |
 
-ClickHouse resolves `DateTime(3)` to `DateTime64(3)` (millisecond precision), so a `DateTime(3)` column stores epoch-**ms**. The CLI's generated ClickHouse tables use `timestamp DateTime(3)` and the generated transformer emits `.getTime()` with **no division** — so "always divide `getTime()` by 1000" is WRONG for the default scaffold and pushes every row to ~1970 if applied.
+**ClickHouse 26.8 or later** reads a bare number for a `DateTime64` column as Unix seconds, so the millisecond row of the table stores `9999-12-31 23:59:59` unless the client sets `input_format_read_datetime_number_as_raw_value: 1` in `clickhouse_settings`. Set it on every pipe that talks to such a server, whatever its own columns hold: the SDK writes milliseconds into `timestamp DateTime(3)` of its `sync` cursor table, and no project code can change that. Servers older than 26.8 reject the setting as unknown, so add it only after `SELECT version()` says 26.8 or later. Measured on 2026-11-12 with `clickhouse-server` 26.10 and 25.8.
 
-```typescript
-// DateTime column (seconds)
-timestamp: Math.floor(d.timestamp.getTime() / 1000)
+What the CLI generates:
 
-// DateTime(3) / DateTime64(3) column (ms) — the CLI default
-timestamp: d.timestamp.getTime()
-```
+| Template | Column | Value |
+|---|---|---|
+| `erc20Transfers`, `uniswapV3Swaps` | `timestamp DateTime(3)` | `getTime()` in an inline `.pipe()` map (milliseconds) |
+| `custom` (EVM and Solana) | `timestamp DateTime` | the `enrichEvents` helper in `src/utils/index.ts` (seconds) |
 
-**Both** mismatch directions land near 1970 (seconds into a ms column, or ms into a seconds column), so a "1970" date alone does not tell you which way is wrong — check the **column type**, then match the divisor to it.
-
-### `enrichEvents` vs inline maps
-
-The CLI-generated `enrichEvents` helper divides by 1000 and emits **unix seconds** (`new Date(v.timestamp).getTime() / 1000`) — but it is used only by the `custom` templates. The `erc20Transfers`/`uniswapV3Swaps` templates use inline `.pipe()` maps that emit **milliseconds** (`.getTime()`, no division) to match their `DateTime(3)` columns. Pick the divisor from the column type, not from a habit or from which helper you copied.
+A mismatch shows as a year of 1970 or 9999 and never as an error. `SELECT min(timestamp), max(timestamp)` against the requested window catches both.
 
 ## Target Configuration
 

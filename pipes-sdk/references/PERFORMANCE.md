@@ -283,7 +283,7 @@ Don't optimize if:
 ## Related
 
 - [pipes-sdk SKILL.md](../SKILL.md) — scaffolding, troubleshooting, validation
-- [PATTERNS.md](./PATTERNS.md) — performance patterns and benchmarks
+- [PATTERNS.md](./PATTERNS.md) — decoder layouts: fixed contracts, factories, topic0-only, parameter filters
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — error patterns and fixes
 
 ## Official Subsquid Documentation

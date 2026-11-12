@@ -7,6 +7,52 @@ detail lives in the auto-generated section of each
 
 ## Unreleased
 
+These changes come from eight end-to-end test runs on 2026-11-11 and 12, in
+which agents built real indexers and ran real Portal queries from the skills
+and the results were checked against RPC nodes and exchange APIs.
+
+### Improved
+
+- `pipes-sdk` has a working recipe for factory contracts in a recent window. A
+  factory indexer only learns the contracts created after its start block, so
+  a "last 48 hours of Uniswap V3 swaps" indexer silently missed every older
+  pool (58% of swaps in our test). The skill now loads older contracts first,
+  and says what to do when that pass is too slow.
+- `pipes-sdk` validation is five checks that each caught a wrong result behind
+  a clean exit: time bounds, row identity, formats, a bounded Portal
+  comparison, and one source outside Portal. It works for Solana and
+  Hyperliquid as well as EVM, and reminds you to divide by the token's real
+  decimals.
+- `pipes-sdk` patterns reference is now runnable code for each decoder layout.
+  Unverified benchmarks, a non-existent `wildcardContracts` option and advice
+  that contradicted the main skill are gone.
+- `portal` shows how to get the traces of one transaction from its hash, and
+  how to join Bitcoin outputs to their transaction IDs.
+- `migrate-to-portal` records a type-check baseline before changing anything,
+  converts a Solana block height to a slot with a script an agent can run, and
+  checks stored rows against an RPC before calling the migration done.
+
+### Fixed
+
+- `pipes-sdk`: on ClickHouse 26.8 or later, a freshly generated indexer stored
+  every timestamp as `9999-12-31` and still exited cleanly. The skill now
+  checks the server version and adds the one client setting that fixes it.
+- `pipes-sdk`: the fix for the CLI's incompatible contract types sits in the
+  build steps with both commands, and the Solana template's stale row helper
+  is listed next to it. A type check is now part of the build steps.
+- `pipes-sdk` and `portal`: Hyperliquid fills have no liquidation flag, and
+  the dataset produces about 14 blocks a second, not one. Both skills said
+  otherwise or said nothing.
+- `portal`: the time-to-block endpoint returns wrong blocks on Hyperliquid
+  fills, Tron and Polkadot, and `404` for recent Bitcoin times. The skill now
+  uses it only on EVM and Solana datasets and ships `scripts/block-at.sh` for
+  the rest.
+- `portal`: the Solana volume estimate counted blocks instead of instructions.
+- `migrate-to-portal`: the Solana example kept `timestamp * 1000` after the
+  upgrade, which stores dates tens of thousands of years ahead, because the
+  new package already delivers milliseconds. The steps also cover ABI modules
+  that stop compiling against the current `@subsquid/evm-abi`.
+
 ## November 11, 2026 — v1.1.0
 
 ### New

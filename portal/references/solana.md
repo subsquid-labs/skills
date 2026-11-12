@@ -9,8 +9,10 @@ curl -s 'https://portal.sqd.dev/datasets/solana-mainnet/stream' \
   -H 'content-type: application/json' \
   -H 'accept: application/x-ndjson' \
   -d '{"type":"solana","fromBlock":280000000,"toBlock":280010000,"instructions":[{"programId":["YOUR_PROGRAM_ID"]}],"fields":{"instruction":{"programId":true}}}' \
-  | wc -l
+  | jq -s 'map(.instructions | length) | add'
 ```
+
+Each NDJSON line is a block, so `wc -l` would count blocks; the `jq` sum counts instructions. One response can end before `toBlock`: when the last line's block number is below it, request again from the next block and add the sums.
 
 **Rules of thumb:**
 - **< 50 instructions per 10K slots** — very low volume. Investigate if the program is a router that delegates to other programs. Consider indexing the related programs too.

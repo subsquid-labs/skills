@@ -106,22 +106,7 @@ PARTITION BY toYYYYMM(block_timestamp)
 
 ## Timestamp Handling
 
-**CRITICAL**: choose the column type first, then match the JS value to its precision. There is no blanket "always divide by 1000" rule — the divisor depends on the column's declared precision.
-
-- **`DateTime`** (no precision arg) stores **seconds** since epoch → feed `Math.floor(d.timestamp.getTime() / 1000)`.
-- **`DateTime(3)` / `DateTime64(3)`** stores **milliseconds** → feed `d.timestamp.getTime()` undivided. ClickHouse parses the `DateTime(3)` column token as `DateTime64(3)`, so the stored ticks are epoch-**ms** and the raw `getTime()` value is already correct.
-
-```typescript
-// Column: DateTime  (seconds)
-timestamp: Math.floor(d.timestamp.getTime() / 1000),
-
-// Column: DateTime(3) / DateTime64(3)  (milliseconds) — the CLI default scaffold
-timestamp: d.timestamp.getTime(),  // do NOT divide
-```
-
-**Both** mismatches produce ~1970 dates: milliseconds into a seconds `DateTime`, *and* seconds into a millisecond `DateTime64(3)` (e.g. `1782669669` → `1970-01-21`). So a `1970-01-28`-style date only tells you the precision is mismatched — check the column type before deciding which way to convert.
-
-The `enrichEvents` helper emits **seconds** (matches a plain `DateTime`); the CLI's erc20/uniswap transformers emit `getTime()` ms (matches the `DateTime(3)` columns they generate).
+Choose the column type first, then send the value that matches it: seconds for `DateTime`, milliseconds for `DateTime(3)` / `DateTime64(3)`, and on ClickHouse 26.8 or later one client setting. The full rule is in [SDK_FEATURES.md](SDK_FEATURES.md#timestamp-handling-critical).
 
 ## Struct/Tuple Event Parameters
 

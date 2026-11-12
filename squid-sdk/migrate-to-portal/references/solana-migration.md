@@ -52,7 +52,33 @@ const dataSource = new DataSourceBuilder()
 Structural changes:
 
 1. Replace `.setGateway(...)` (and `.setRpc({...})` if present) with `.setPortal({ url, http })`. `retryAttempts: Infinity` keeps a production indexer waiting through a Portal outage. The default budget is 20 retries, about five minutes, from `@subsquid/solana-stream` 1.2.1 on; earlier `1.x` releases gave up after about 33 seconds whatever was configured.
-2. Convert the block-range `from` from a block height to a slot number. Solana exposes both; the v2 archive used heights, Portal uses slots. Use the interactive bisection converter embedded at <https://docs.sqd.dev/en/sdk/squid-sdk/solana/guides/migration/height-to-slot> (binary-searches the public Portal).
+2. Convert the block-range `from` from a block height to a slot number. Solana exposes both; the v2 archive used heights, Portal uses slots, and the two differ by tens of millions (height 269,828,500 is slot 290,921,253). Bisect on Portal block headers, which carry both:
+
+   ```bash
+   #!/usr/bin/env bash
+   # height-to-slot.sh <block-height>: the Solana slot whose block has that height.
+   set -euo pipefail
+   P=https://portal.sqd.dev/datasets/solana-mainnet; H=$1
+   req() {  # resend after Portal's 529, which always carries Retry-After
+     local out
+     while :; do
+       out=$(curl -sS --compressed -w '\n%{http_code}' "$@")
+       [ "${out##*$'\n'}" = 529 ] && { sleep 10; continue; }
+       printf '%s' "${out%$'\n'*}"; return
+     done
+   }
+   height() {  # height of the first block at or after slot $1
+     req -X POST "$P/stream" -H 'content-type: application/json' -d "{\"type\":\"solana\",\"fromBlock\":$1,\"toBlock\":$(($1 + 50)),\"includeAllBlocks\":true,\"fields\":{\"block\":{\"number\":true,\"height\":true}}}" | head -1 | jq -r .header.height
+   }
+   lo=$H; hi=$(req "$P/head" | jq -r .number)   # a slot is never below its block's height
+   while [ "$lo" -lt "$hi" ]; do
+     mid=$(((lo + hi) / 2))
+     if [ "$(height "$mid")" -ge "$H" ]; then hi=$mid; else lo=$((mid + 1)); fi
+   done
+   echo "$lo"
+   ```
+
+   It makes about 28 small requests. Use `curl`: Portal answers `403` to the default client of Python's `urllib`. The docs page at <https://docs.sqd.dev/en/sdk/squid-sdk/solana/guides/migration/height-to-slot> has the same search as an interactive widget for a person.
 
 Selectors inside `.addInstruction({ where, include })` and field selection in `.setFields({...})` keep the same shape.
 
@@ -71,7 +97,18 @@ Selectors inside `.addInstruction({ where, include })` and field selection in `.
 
 Same for `transaction.block.slot` / `instruction.block.slot` if those were traversed.
 
-## Step 4 — Field selection
+## Step 4 — Timestamps are now milliseconds
+
+`@subsquid/solana-stream` 1.x delivers `block.header.timestamp` in milliseconds; 0.x delivered seconds. Remove the handler's own conversion, or every stored date lands tens of thousands of years ahead with no error:
+
+```diff
+-  timestamp: new Date(block.header.timestamp * 1000),
++  timestamp: new Date(block.header.timestamp),
+```
+
+Find every use with `grep -rn "timestamp \* 1000\|timestamp\*1000" src`. Check one stored row against `getBlockTime` for its slot on a Solana RPC. An EVM squid needs no change here: its v2 timestamps were already milliseconds.
+
+## Step 5 — Field selection
 
 The Portal `solana-stream` (`^1.x.x`) fetches **only** the fields listed in `.setFields()`. There is no default set — beyond a small set of always-required identity/index fields (`block.number`/`.hash`/`.parentHash`, `transaction.transactionIndex`, `instruction.transactionIndex`/`.instructionAddress`, etc.), every field must be requested explicitly. TypeScript enforces this: accessing a field not in your selection is a compile error.
 

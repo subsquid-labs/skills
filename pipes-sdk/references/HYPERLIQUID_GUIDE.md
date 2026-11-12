@@ -228,7 +228,7 @@ Builder for constructing Hyperliquid fills queries.
 
 | Method | Description |
 |--------|-------------|
-| `.addRange({ from })` | Set the starting block (dataset starts at 750,000,000) |
+| `.addRange({ from, to })` | Set the block range (dataset starts at 750,000,000) |
 | `.addFields({ block, fill })` | Select which fields to include |
 | `.addFillRequest({ range, request })` | Add fill filter (**range is required**) |
 
@@ -256,8 +256,12 @@ All numeric values are native JavaScript `number` (float64), NOT BigInt:
 | `startPosition` | number | Position before this fill |
 | `fillIndex` | number | Stable row index within the block; identify rows by `(block.number, fillIndex)` |
 | `side` | `'B' \| 'A'` | Bid-side or ask-side fill |
-| `dir` | string | "Open Long", "Close Long", "Open Short", "Close Short", "Long > Short", "Short > Long", "Net Child Vaults" |
+| `dir` | string | Perpetuals: "Open Long", "Close Long", "Open Short", "Close Short", "Long > Short", "Short > Long". Spot: "Buy", "Sell". Also seen on 2026-11-11: "Settlement", "Split Outcome", "Merge Outcome", "Negate Outcome" |
 | `crossed` | boolean | true = taker (market order) |
+
+The other selectable fields are `user`, `coin`, `time`, `hash`, `oid`, `tid`, `cloid`, `feeToken`, `builder`, `builderFee` and `twapId`. `time` is the fill's own millisecond timestamp.
+
+**No field marks a liquidation.** The dataset has no `liquidation` field and no `dir` value for one. When the user asks for liquidations, say the fills dataset cannot identify them and report the count as unavailable. Zero would be a false answer.
 
 ## Use Case Examples
 
@@ -413,23 +417,11 @@ function classifyAsset(coin) {
 
 ## Choosing a Start Block
 
-The Hyperliquid dataset starts at block **750,000,000**. Blocks increment at roughly **~1 block per second** (not exactly, but close enough for estimation).
+The dataset starts at block 750,000,000 and produces about 14 blocks per second (602,013 blocks in one 12-hour window on 2026-11-11), so block arithmetic from a date is off by a wide margin.
 
-**Estimating a "last N days" start block:**
-```
-current_block ≈ 750,000,000 + (seconds since dataset start)
-blocks_per_day ≈ 86,400
-start_block ≈ current_block - (N_days × 86,400)
-```
+Pass block numbers in `range`, and get them from block header timestamps. Both shortcuts fail on this dataset: an ISO date in `range` and Portal's `/timestamps/{ts}/block` endpoint resolve through the same lookup, which on `hyperliquid-fills` returned a block about two hours early for a time near the head. The **portal** skill's step 3 has the bisection script that returns the right block. Then filter rows on `fill.time` in the transform or in SQL, and check `min(timestamp)` and `max(timestamp)` against the window once the run ends.
 
-**Reference points (approximate):**
-- Block 920,000,000 ≈ early March 2026 (~6 months of data)
-- Block 924,000,000 ≈ mid-March 2026 (~last 2-3 weeks)
-- Block 930,000,000 ≈ late March 2026
-
-**To find the current head block**, query the Portal or start an indexer and watch the log output — it prints the target block range.
-
-**Tip:** For testing, start with the last 3-7 days of data. For production dashboards, sync a wider range. A 7-day window for BTC/ETH/SOL yields ~6M fills and takes ~2-3 minutes to sync.
+For a first run, take the last 6 to 24 hours. Twelve hours of BTC, ETH and SOL fills were 643,216 rows and synced in about 5 seconds.
 
 ## Computed Fields
 
@@ -443,9 +435,9 @@ Hyperliquid timestamps work differently from EVM indexers:
 - The recommended pattern is `new Date(block.header.timestamp).toISOString()` which produces strings like `"2026-03-17T12:00:00.000Z"`
 - ClickHouse accepts these ISO strings when configured with `date_time_input_format: 'best_effort'` and a `DateTime64(3, 'UTC')` column
 
-**Do NOT divide by 1000** here — the ISO string approach already carries millisecond precision, and `DateTime64(3, 'UTC')` expects it. Epoch seconds in a `DateTime64(3)` column land in 1970.
+The ISO string carries millisecond precision, so nothing is divided.
 
-For EVM indexers the divisor is not a fixed rule either: it depends on the ClickHouse column precision. See [SCHEMA_GUIDE.md](SCHEMA_GUIDE.md#timestamp-handling) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-dates).
+On ClickHouse 26.8 or later, also add `input_format_read_datetime_number_as_raw_value: 1` to `clickhouse_settings`. The ISO strings keep the fill rows right without it, but the SDK's `sync` cursor table stores `9999-12-31` for every checkpoint. The rule and its reason: [SDK_FEATURES.md](SDK_FEATURES.md#timestamp-handling-critical).
 
 ## Common Gotchas
 

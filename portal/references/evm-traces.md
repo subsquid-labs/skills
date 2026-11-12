@@ -132,9 +132,45 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 ---
 
+### Example 3: All Traces of One Transaction
+
+**Use case:** The user gives a transaction hash and asks what happened inside it.
+
+Portal has no hash filter. Resolve the hash to its block and position with a public RPC, then query that one block and keep the transaction's traces:
+
+```bash
+read -r B I < <(curl -s https://eth.drpc.org -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash","params":["0x<hash>"]}' \
+  | jq -r '.result | "\(.blockNumber) \(.transactionIndex)"')
+echo "block=$((B)) index=$((I))"   # the RPC answers in hex; $(( )) converts
+```
+
+```json
+{
+  "type": "evm",
+  "fromBlock": 26394781,
+  "toBlock": 26394781,
+  "traces": [{}],
+  "fields": {
+    "trace": {
+      "transactionIndex": true, "traceAddress": true, "type": true, "subtraces": true, "error": true,
+      "callFrom": true, "callTo": true, "callValue": true, "callSighash": true, "callCallType": true
+    }
+  }
+}
+```
+
+```bash
+jq -c '.traces[] | select(.transactionIndex == 84)' results.ndjson
+```
+
+**Notes:** An empty filter object (`"traces": [{}]`) selects every trace in the range, which is fine for one block. `traceAddress` gives each call's place in the tree: `[]` is the top-level call, `[0, 1]` the second call made by its first child.
+
+---
+
 ## More Examples
 
-### Example 3: Monitor Delegatecall Patterns (Proxy Contracts)
+### Example 4: Monitor Delegatecall Patterns (Proxy Contracts)
 
 **Use case:** Track delegatecall operations for proxy pattern analysis.
 
@@ -164,7 +200,7 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 ---
 
-### Example 4: Find a Deployment by Contract Address
+### Example 5: Find a Deployment by Contract Address
 
 **Use case:** Find the deployment trace for a known contract address.
 
@@ -195,7 +231,7 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 ---
 
-### Example 5: Track Multi-Hop Swaps (MEV Analysis)
+### Example 6: Track Multi-Hop Swaps (MEV Analysis)
 
 **Use case:** Analyze complex swap paths (e.g., Token A -> B -> C).
 
@@ -229,7 +265,7 @@ Contract creation via CREATE or CREATE2 opcodes.
 
 ---
 
-### Example 6: Contract Self-Destruct Tracking
+### Example 7: Contract Self-Destruct Tracking
 
 **Use case:** Monitor contracts being destroyed (rare but important).
 

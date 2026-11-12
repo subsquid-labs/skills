@@ -219,6 +219,10 @@ const output = query.build().pipe((blocks) => {
 3. **Anchor IDL registries** — stored at a PDA derived from program ID
 4. **Protocol docs** — some link IDLs directly
 
+The CLI's SVM `custom` template has already fetched the on-chain IDL and generated `src/contracts/` from it, so look for an IDL elsewhere only when that step failed.
+
+**Cover every instruction that does what the user asked.** List the instruction names in the generated module and include each variant. Orca Whirlpool swaps, for example, arrive as `swap`, `swapV2`, `twoHopSwap` and `twoHopSwapV2`, and a two-hop instruction touches two pools. Decoding `swap` alone undercounts with no error.
+
 **When on-chain IDL is missing:** Some Anchor programs don't store IDLs on-chain. `programId#name` fails with `Failed to fetch IDL`. Download from the protocol's GitHub repo and pass local files.
 
 ### Non-Anchor Programs: Manual d1 Decoding

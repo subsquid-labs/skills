@@ -6,7 +6,7 @@ compatibility: Requires Node.js 22 LTS (@subsquid/pipes needs >=22.15.0) and pnp
 allowed-tools: Bash Read Write Edit Grep
 metadata:
   author: subsquid
-  version: "1.6.5"
+  version: "1.6.6"
   category: core
 ---
 
@@ -65,11 +65,12 @@ Then pick the decoder layout:
 
 | Dimension | The request has | Use |
 |---|---|---|
-| Contracts | one address, or a fixed list sharing one ABI | one `evmEventDecoder` with the full `contracts` list; rows carry `contractAddress` from `d.contract` |
-| | addresses created by a factory | the [factory pattern](references/PATTERNS.md#3-factory-pattern-with-pre-indexing) |
-| | any contract that emits the event | [topic0-only filtering](references/PATTERNS.md#4-topic0-only-global-filtering): omit `contracts` |
-| Events | different ABIs on different contracts | one decoder per ABI under `outputs: { a: evmEventDecoder(...), b: evmEventDecoder(...) }` ([multi-output](references/PATTERNS.md#5-parallel-event-decoding-multi-output)) |
-| | one event filtered on indexed parameters | [server-side parameter filtering](references/PATTERNS.md#6-event-parameter-filtering-server-side); overlapping filters each get their own decoder |
+| Contracts | one address, or a fixed list sharing one ABI | one `evmEventDecoder` with the full `contracts` list; rows carry `contractAddress` from `d.contract` ([code](references/PATTERNS.md#fixed-contracts)) |
+| | addresses created by a factory, from its deployment block on | the [factory decoder](references/PATTERNS.md#contracts-created-by-a-factory) |
+| | addresses created by a factory, in a window that starts later | the factory decoder plus a [history pass](references/PATTERNS.md#history-pass-for-a-window-that-starts-later). Without it, every child older than the window is missing and nothing reports it |
+| | any contract that emits the event | [topic0-only filtering](references/PATTERNS.md#any-contract-that-emits-the-event-topic0-only): omit `contracts` |
+| Events | different ABIs on different contracts | one decoder per ABI under `outputs: { a: evmEventDecoder(...), b: evmEventDecoder(...) }` ([code](references/PATTERNS.md#several-decoders-in-one-pipe)) |
+| | one event filtered on indexed parameters | [server-side parameter filtering](references/PATTERNS.md#filter-on-indexed-parameters); overlapping filters each get their own decoder |
 | Tables | one table per event | the `custom` template default: `{contractName}_{eventName}` in snake_case for a contract-specific decoder, `{eventName}` plus a contract-address column for a shared one |
 | | one combined table | map every output to the same row shape in `.pipe((data) => ...)` and insert once |
 | Row transform | the same for every event | one helper that flattens `d.event`, `d.block.number`, `d.rawEvent.transactionHash`, `d.rawEvent.logIndex` and `d.timestamp` |
@@ -100,12 +101,30 @@ Done when the project folder holds `src/index.ts` and its dependencies are insta
 
 ### 3. Fit the project to its environment
 
-1. **ABI (custom template).** CLI beta.3 generates `src/contracts/` with typegen 5, which the project cannot load: `ls <project>/src/contracts` shows a directory per address and `abi.support.ts`. Regenerate with `@subsquid/evm-typegen@4.6.0` as in [Pattern 1](references/TROUBLESHOOTING.md#error-pattern-1-abi-version-mismatch), so there is one `0x<address>.ts` per contract. Then `grep "export const events" <project>/src/contracts/*.ts` lists the events you researched. When it lists only `Upgraded`, the ABI came from a proxy: generate types from the implementation, update the import in `src/index.ts`, and keep the proxy address in `contracts:`.
-2. **Its own database.** The CLI names the database `pipes` in every project, and two projects with an `erc20_transfers` table would write into the same one. Create a database named after the project with hyphens turned into underscores (`my-indexer` becomes `my_indexer`) and set it in `<project>/.env` (`CLICKHOUSE_DATABASE=...`).
-3. **Credentials.** `SELECT 1` succeeds with the configured credentials. Check that without displaying them, and replace generated demo passwords before shared or hosted use: [CREDENTIALS.md](references/CREDENTIALS.md).
-4. **Docker files.** The CLI writes `docker-compose.yml` and a `Dockerfile` into every project. When the user runs their own database, delete both and point `.env` at it.
+The CLI's output needs these fixes before the first run. Each one is a defect that otherwise shows up later as a crash or as wrong data.
 
-Done when `src/contracts/` holds one module per contract that exports the events from step 1, `.env` names a database only this project uses, and `SELECT 1` succeeds.
+1. **ABI (EVM `custom` template).** CLI beta.3 generates `src/contracts/` with typegen 5, which the project cannot load ([pipes-sdk#220](https://github.com/subsquid/pipes-sdk/issues/220)). When `ls <project>/src/contracts` shows a directory per address and `abi.support.ts`, regenerate each contract with typegen 4.6.0, which writes the single `0x<address>.ts` the imports expect:
+
+   ```bash
+   rm -rf src/contracts/0x<address> src/contracts/abi.support.ts
+   npx @subsquid/evm-typegen@4.6.0 src/contracts 0x<address> --chain-id <chain-id>
+   ```
+
+   Then `grep "export const events" src/contracts/*.ts` lists the events you researched. When it lists only `Upgraded`, the ABI came from a proxy: generate types from the implementation, update the import in `src/index.ts`, and keep the proxy address in `contracts:`.
+2. **Row helper (Solana `custom` template).** The generated `enrichEvents` in `src/utils/index.ts` reads `v.blockNumber`, which beta.11 decoders no longer set. Replace it with `v.block.number`.
+3. **Types.** `npx tsc --noEmit` exits 0. It catches both defects above, and any the next CLI release adds, before a run does.
+4. **Its own database.** The CLI names the database `pipes` in every project, and two projects with an `erc20_transfers` table would write into the same one. Create a database named after the project with hyphens turned into underscores (`my-indexer` becomes `my_indexer`) and set it in `<project>/.env` (`CLICKHOUSE_DATABASE=...`).
+5. **Credentials.** `SELECT 1` succeeds with the configured credentials. Check that without displaying them, and replace generated demo passwords before shared or hosted use: [CREDENTIALS.md](references/CREDENTIALS.md).
+6. **ClickHouse version (ClickHouse target).** Run `SELECT version()`. On 26.8 or later, add one setting to the `clickhouse_settings` of `createClient` in `src/index.ts`:
+
+   ```typescript
+   input_format_read_datetime_number_as_raw_value: 1,
+   ```
+
+   From 26.8 on, ClickHouse reads a bare number sent to a `DateTime64` column as Unix seconds. The `erc20Transfers` and `uniswapV3Swaps` templates send milliseconds to `timestamp DateTime(3)`, and the SDK does the same for the `sync` cursor table of every ClickHouse project, so those timestamps are stored as `9999-12-31 23:59:59` and the run still exits 0. The CLI's `docker-compose.yml` pulls `clickhouse-server:latest`, so a new local container has this. Leave the setting out below 26.8: those servers reject it as unknown and the pipe stops at startup.
+7. **Docker files.** The CLI writes `docker-compose.yml` and a `Dockerfile` into every project. When the user runs their own database, delete both and point `.env` at it.
+
+Done when `npx tsc --noEmit` exits 0, `src/contracts/` holds one module per contract that exports the events from step 1, `.env` names a database only this project uses, `SELECT 1` succeeds, and the client carries the setting from item 6 exactly when the server is 26.8 or later.
 
 ### 4. Start it and read the first log line
 
@@ -128,9 +147,12 @@ Done when the log shows the pipe starting from the intended block and rows arriv
 
 ### 5. Validate
 
-Run the checks in [VALIDATION.md](references/VALIDATION.md), and compare a bounded window against the closest Portal query for the same filter (the **portal** skill, or the handoff baseline from step 1). Its address and hash formats are EVM's; apply the chain's own formats elsewhere. Hyperliquid fills are compared by row identity, as the VALIDATION.md note describes, because the SDK and Portal batch blocks differently. Timestamps in 1970 and other row-shape surprises are in [SDK_FEATURES.md](references/SDK_FEATURES.md#timestamp-handling-critical).
+Run the checks in [VALIDATION.md](references/VALIDATION.md). The two that catch wrong data a clean exit hides:
 
-Done when every check in VALIDATION.md's final checklist that applies to the chain passes, and the bounded window matches Portal by count and event identity. When they differ, find the cause before touching the cursor.
+- **Time bounds.** `SELECT min(timestamp), max(timestamp) FROM <table>` falls inside the requested window. A year of 1970 or 9999 is a unit mismatch: [timestamp handling](references/SDK_FEATURES.md#timestamp-handling-critical).
+- **A bounded window against Portal.** The same filter over a few hundred blocks, queried through the **portal** skill (or the handoff baseline from step 1), matches the table by count and by row identity.
+
+Done when every check in VALIDATION.md's final checklist that applies to the chain passes. When the table and Portal differ, find the cause before touching the cursor.
 
 ### 6. Deploy, when asked
 
@@ -153,8 +175,9 @@ Done when the indexer runs past the point where it failed and the affected table
 | `Unknown table 'pipes.sync'` in the ClickHouse server log on the first run | Harmless: the SDK creates the table and continues | [Pattern 3](references/TROUBLESHOOTING.md#harmless-unknown-table-pipessync-on-first-run) |
 | `Cannot read properties of undefined (reading 'topic')` | A proxy's ABI was loaded | [Pattern 4b](references/TROUBLESHOOTING.md#error-pattern-4b-proxy-contract-abi--crash-on-startup) |
 | The database stays empty | Start block, proxy, filter, or a cursor from another pipe | [Pattern 5](references/TROUBLESHOOTING.md#error-pattern-5-missing-data) |
-| A factory indexer shows 0 rows for 30 to 60 s | It reads forward from `range.from` before children exist | [Pattern 5b](references/TROUBLESHOOTING.md#error-pattern-5b-factory-indexer-shows-zero-data) |
-| Timestamps show 1970 | The JS value's precision differs from the column's | [Pattern 5c](references/TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-dates) |
+| A factory indexer stores no rows, or fewer than expected | It knows only children created at or after `range.from` | [Pattern 5b](references/TROUBLESHOOTING.md#error-pattern-5b-factory-indexer-misses-children) |
+| Timestamps show 1970 | The JS value's precision differs from the column's | [Pattern 5c](references/TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-or-9999) |
+| Every timestamp is `9999-12-31`, in data tables or in `sync` | ClickHouse 26.8 or later reads bare numbers as seconds | [Pattern 5c](references/TROUBLESHOOTING.md#error-pattern-5c-timestamps-show-1970-or-9999) |
 | `heap out of memory`, or the process is killed | Batches too large | [Pattern 6](references/TROUBLESHOOTING.md#error-pattern-6-memory-issues) |
 | `Table already exists`, or a type mismatch | Schema drift | [Pattern 7](references/TROUBLESHOOTING.md#error-pattern-7-clickhouse-schema-issues) |
 | `ZSTD_error_prefix_unknown` | Node.js 25 zstd bug; run Node.js 22 | [Pattern 9](references/TROUBLESHOOTING.md#error-pattern-9-nodejs-version-compatibility-issues) |
@@ -177,7 +200,7 @@ Every coded error prints a `See: https://docs.sqd.dev/en/sdk/pipes-sdk/errors/<c
 | Faster re-runs over the same range | [Portal response cache](references/SDK_FEATURES.md#portal-response-cache-cache) |
 | Prometheus metrics, OpenTelemetry traces, a local dashboard | [Metrics](references/SDK_FEATURES.md#prometheus-metrics-metrics), [tracing](references/SDK_FEATURES.md#opentelemetry-tracing-profiler), [Pipes UI](https://docs.sqd.dev/en/sdk/pipes-sdk/evm/guides/basic-development/pipes-ui) |
 | Several pipes in one database | [Cursor keying](references/SDK_FEATURES.md#cursor-keying--upgrading-to-alpha15) |
-| Aggregations, custom targets, factory event filtering | [PATTERNS.md](references/PATTERNS.md) |
+| A custom target, a factory filtered by creation-event parameters, an RPC latency watcher | [PATTERNS.md](references/PATTERNS.md) |
 
 ## Untrusted data and credentials
 

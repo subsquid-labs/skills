@@ -5,7 +5,7 @@ license: Apache-2.0
 allowed-tools: Bash WebFetch WebSearch
 metadata:
   author: subsquid
-  version: "1.6.5"
+  version: "1.6.6"
   category: portal-core
 ---
 
@@ -74,17 +74,20 @@ Done when the slug answers `200` (or `portal_list_networks` returns it), it is a
 ## 3. Resolve what the user named
 
 - **Tokens, contracts, protocols, pools, Hyperliquid coins** become addresses and filters through `portal_resolve_entity` when MCP is connected, and otherwise through a token list, protocol documentation, or Portal data you can cite.
-- **Time ranges** become blocks through Portal, which works for archived and real-time data on every dataset:
+- **Time ranges** become blocks. Block times vary too much for `(now - ts) / block_time` arithmetic (Hyperliquid produces about 14 blocks a second), so look the block up:
 
-  ```bash
-  NOW=$(date +%s)
-  FROM=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/timestamps/$((NOW - 4*3600))/block | jq -r .block_number)
-  TO=$(curl -s https://portal.sqd.dev/datasets/base-mainnet/head | jq -r .number)
-  ```
+  | End of the range | Dataset | Lookup |
+  |---|---|---|
+  | Now | any | `curl -s https://portal.sqd.dev/datasets/{slug}/head \| jq -r .number` |
+  | A past time | `evm` and `solana` types | `curl -s https://portal.sqd.dev/datasets/{slug}/timestamps/{unix-seconds}/block \| jq -r .block_number` |
+  | A past time | `hyperliquidFills`, `tron`, `bitcoin`, `substrate` types | `scripts/block-at.sh {slug} {type} {unix-seconds}` |
 
-  The endpoint takes Unix seconds and returns the first block at or after that time. On Tron the answer is approximate (it can land about 1,000 seconds early), so widen the range and filter on the returned block timestamps. A future timestamp answers `404` `not_found`, except on Tron, where it clamps to a block near the head. Block times vary too much for `(now - ts) / block_time` arithmetic. MCP time-based tools take the window directly (`"last hour"`, `"past 30 minutes"`).
+  The `/timestamps` endpoint is wrong on the datasets in the last row: on `hyperliquid-fills` it answered about two hours early for a time near the head, on `tron-mainnet` its answers near the head go backwards as the time goes forwards, on `polkadot` it answered 3,451 blocks (about six hours) early, and on `bitcoin-mainnet` a recent time answers `404`. `scripts/block-at.sh` bisects on block header timestamps instead, in 20 to 30 small requests. On any dataset, a future timestamp answers `404` `not_found`.
 
-Done when every address in the request has a source you can cite and the range has an explicit first and last block or an MCP time window.
+  After the query, read the `timestamp` of the first and last block returned and confirm both fall inside the window. Header timestamps are Unix seconds on EVM, Solana and Bitcoin datasets and milliseconds on Hyperliquid, Tron and Substrate. MCP time-based tools take the window directly (`"last hour"`, `"past 30 minutes"`).
+- **A transaction hash** becomes a block number through an Ethereum JSON-RPC `eth_getTransactionByHash` on a public RPC for that chain, because Portal filters by block range and has no hash filter. Query that one block and keep the rows whose `transactionHash` or `transactionIndex` matches.
+
+Done when every address in the request has a source you can cite, and the range has an explicit first and last block from the lookups above or an MCP time window.
 
 ## 4. Build a bounded request
 
@@ -102,6 +105,8 @@ curl -sS --compressed -X POST "https://portal.sqd.dev/datasets/{slug}/stream" \
   -H "accept: application/x-ndjson" \
   --data @query.json > results.ndjson
 ```
+
+Send requests with `curl`. Portal answers `403` to the default client of Python's `urllib`, which reads like a credential problem and is not one.
 
 ```json
 {
