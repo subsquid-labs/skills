@@ -50,9 +50,8 @@ the runs repeated earlier scenarios against the fixed skills.
   the dataset produces about 14 blocks a second, not one. Both skills said
   otherwise or said nothing.
 - `portal`: the time-to-block endpoint returns wrong blocks on Hyperliquid
-  fills, Tron and Polkadot, and `404` for recent Bitcoin times. The skill now
-  uses it only on EVM and Solana datasets and ships `scripts/block-at.sh` for
-  the rest, which finds the block from header timestamps in 4 to 8 requests.
+  fills, Tron and Polkadot. The skill now uses it only on EVM, Solana and
+  Bitcoin datasets and ships `scripts/block-at.sh` for the rest, which finds the block from header timestamps in 4 to 8 requests.
 - `portal`: the Solana volume estimate counted blocks instead of instructions.
 - `migrate-to-portal`: the Solana example kept `timestamp * 1000` after the
   upgrade, which stores dates tens of thousands of years ahead, because the
