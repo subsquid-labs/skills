@@ -290,7 +290,7 @@ The first at `tsc` on `run(dataSource, db, ...)`, the second on the first batch 
 
 **Cause:** `@subsquid/typeorm-store` older than 1.7.0, kept by the lockfile. Before 1.3.0 it has no `transactHot2()`; 1.3.0 to 1.6.x require consecutive block heights, while `run()` passes only blocks with data.
 
-**Fix:** `npm i @subsquid/typeorm-store@latest`.
+**Fix:** `npm i @subsquid/typeorm-store@^1.7.0`.
 
 ### `Unable to process fork` right after the switch
 
@@ -338,7 +338,8 @@ export type Context<Store> = BaseDataHandlerContext<BlockData, Store> & {
   _chain: { client: RpcClient }
 }
 
-const rpcClient = new RpcClient({ url: process.env.RPC_URL!, rateLimit: 10, requestTimeout: 30_000, retryAttempts: Number.MAX_SAFE_INTEGER })
+// full options (retries, timeout, batching): evm-migration.md Step 6
+const rpcClient = new RpcClient({ url: process.env.RPC_URL!, /* ...Step 6 options */ })
 
 run(dataSource, db, async (raw) => {
   const ctx: Context<Store> = {

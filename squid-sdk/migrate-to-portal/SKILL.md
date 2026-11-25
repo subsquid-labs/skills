@@ -24,10 +24,11 @@ The v2 gateways are being shut down dataset by dataset, and self-hosted v2 calls
 
 2. **Confirm the dataset is served and staying.** First look the chain up in the retirement notices at <https://docs.sqd.dev/announcements> and <https://docs.sqd.dev/changelog>; a dataset can answer `200` today with an end date already announced. Then map the old `https://v2.archive.subsquid.io/network/<slug>` to Portal:
    ```bash
-   curl -s https://portal.sqd.dev/datasets/<slug>/metadata
+   curl -s -w '\n%{http_code}\n' https://portal.sqd.dev/datasets/<slug>/metadata
    # {"dataset":"ethereum-mainnet","aliases":[],"real_time":true,"start_block":0}
+   # 200
    ```
-   A JSON answer means Portal serves it. `404` means the slug was renamed or retired: search <https://portal.sqd.dev/datasets>. Retired so far: 67 low-usage datasets (2026-08-20), Moonbeam, Moonriver, Polygon zkEVM and Taiko (2026-09-22), Blast and Abstract (2026-10-20), Gravity Alpha and Enjin (2026-11-04). A retired dataset has no Portal target, so the squid moves to the EVM RPC source or a private Portal instead; tell the user before changing code, and tell them the end date of a dataset that has one. Note `real_time` too: a `false` dataset does not follow the chain head (on 2026-11-25, 72 of the 106 public datasets, some days behind), which decides the EVM data source in `references/evm-migration.md` Step 4.
+   `200` means Portal serves it; read `real_time` from the body. `404` means the slug was renamed or retired: search <https://portal.sqd.dev/datasets>. Retired so far: 67 low-usage datasets (2026-08-20), Moonbeam, Moonriver, Polygon zkEVM and Taiko (2026-09-22), Blast and Abstract (2026-10-20), Gravity Alpha and Enjin (2026-11-04). A retired dataset has no Portal target, so the squid moves to the EVM RPC source or a private Portal instead; tell the user before changing code, and tell them the end date of a dataset that has one. Note `real_time` too: a `false` dataset does not follow the chain head (on 2026-11-25, 72 of the 106 public datasets, some days behind), which decides the EVM data source in `references/evm-migration.md` Step 4.
 
 3. **Inventory direct RPC calls in the batch handler.** `new abi.Contract(ctx, header, address)` or `Multicall(...)` means the migration includes the RPC-client step.
 

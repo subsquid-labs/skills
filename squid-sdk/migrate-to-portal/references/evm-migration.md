@@ -7,10 +7,10 @@ The EVM branch of `../SKILL.md`: an `@subsquid/evm-processor` squid becomes an `
 ```bash
 npm uninstall @subsquid/evm-processor @subsquid/archive-registry
 npm i @subsquid/evm-stream @subsquid/evm-objects @subsquid/batch-processor @subsquid/logger
-npm i @subsquid/typeorm-store@latest
+npm i @subsquid/typeorm-store@^1.7.0
 ```
 
-`run()` needs `@subsquid/typeorm-store` 1.7.0 or later. Before 1.3.0, `tsc` fails with `Property 'transactHot2' is missing in type 'TypeormDatabase'`; 1.3.0 to 1.6.x compile and then crash on the first batch with `blocks must form a continues chain`. A lockfile keeps the old version unless it is installed explicitly.
+`run()` needs `@subsquid/typeorm-store` 1.7.0 or later. Before 1.3.0, `tsc` fails with `Property 'transactHot2' is missing in type 'TypeormDatabase'`; 1.3.0 to 1.6.x compile and then crash on the first batch with `blocks must form a continues chain` (sic). A lockfile keeps the old version unless it is installed explicitly.
 
 If the handler makes direct RPC calls (contract state, Multicall):
 
