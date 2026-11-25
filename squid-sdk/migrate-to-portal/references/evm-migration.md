@@ -1,13 +1,16 @@
 # EVM migration steps
 
-The EVM branch of `../SKILL.md`: an `@subsquid/evm-processor` squid becomes an `@subsquid/evm-stream` data source driven by `run()` from `@subsquid/batch-processor`. Do the steps in order, then return to `SKILL.md` for hot blocks, verification and the re-sync. A full before/after of one file is in `evm-example-diff.md`; compiler and runtime errors are in `common-errors.md`.
+The EVM branch of `../SKILL.md`: an `@subsquid/evm-processor` squid becomes an `@subsquid/evm-stream` data source driven by `run()` from `@subsquid/batch-processor`. Do the steps in order, then return to `SKILL.md` for hot blocks, verification and deployment. A full before/after of one file is in `evm-example-diff.md`; compiler and runtime errors are in `common-errors.md`.
 
 ## Step 1 — Swap packages
 
 ```bash
 npm uninstall @subsquid/evm-processor @subsquid/archive-registry
 npm i @subsquid/evm-stream @subsquid/evm-objects @subsquid/batch-processor @subsquid/logger
+npm i @subsquid/typeorm-store@latest
 ```
+
+`run()` needs `@subsquid/typeorm-store` 1.7.0 or later. Before 1.3.0, `tsc` fails with `Property 'transactHot2' is missing in type 'TypeormDatabase'`; 1.3.0 to 1.6.x compile and then crash on the first batch with `blocks must form a continues chain`. A lockfile keeps the old version unless it is installed explicitly.
 
 If the handler makes direct RPC calls (contract state, Multicall):
 
@@ -142,6 +145,17 @@ const dataSource = new DataSourceBuilder()
   .build()
 ```
 
+**The data source depends on the dataset** (SKILL.md pre-flight step 2). All three builders share `setFields`, `addLog`/`addTransaction`/`addTrace`/`addStateDiff`, `includeAllBlocks`, `setBlockRange` and `build()`; only the endpoint call differs.
+
+| v2 squid | Portal metadata | Builder |
+|---|---|---|
+| gateway + RPC (real-time) | `"real_time": true` | `DataSourceBuilder` from `@subsquid/evm-stream`, as above |
+| gateway + RPC (real-time) | `"real_time": false` | `EvmFallbackDataSourceBuilder` from `@subsquid/squid-sdk/evm/fallback`: `.setDownstreamSources([{type: 'portal', url}, {type: 'rpc', url, rpc: {finalityConfirmation: N}}])`. Portal alone stops at its own head, hours to days behind the chain. Needs `@subsquid/squid-sdk` newer than 0.7.2: in 0.7.2 the fallback never leaves a Portal parked at its own head |
+| gateway only (finalized) | any | `DataSourceBuilder`, with `supportHotBlocks: false` on the store |
+| any | `404` | `EvmRpcDataSourceBuilder` from `@subsquid/squid-sdk/evm/rpc`: `.setRpc({url, rateLimit, rpc: {finalityConfirmation: N}, requestTimeout: 30_000, retryAttempts: Number.MAX_SAFE_INTEGER})` |
+
+The fallback and RPC builders need `npm i @subsquid/squid-sdk @subsquid/evm-rpc @subsquid/evm-normalization`. `rpc.finalityConfirmation` carries over `.setFinalityConfirmation(N)`; without it the source uses the node's `finalized` block. A standalone RPC source neither retries nor times out by default, unlike `.setRpcEndpoint()`, hence the explicit `requestTimeout` and `retryAttempts`. Up to `@subsquid/squid-sdk` 0.7.2 the RPC source matched `where` values case-sensitively against lowercase RPC data, so write addresses, topics and sighashes in lowercase there.
+
 Full before/after for both starting shapes (recent `setGateway`/`setRpcEndpoint`/`setFinalityConfirmation` and the older `lookupArchive` + `setDataSource({archive, chain})`) is in `evm-example-diff.md`.
 
 Structural changes:
@@ -210,7 +224,13 @@ import {RpcClient} from '@subsquid/rpc-client'
 
 const rpcClient = new RpcClient({
   url: process.env.RPC_URL!,
-  rateLimit: 100,
+  rateLimit: 10, // keep the squid's old .setRpcEndpoint() value
+  // what EvmBatchProcessor configured for its client; the RpcClient defaults are
+  // retryAttempts: 0 (the first 429/5xx stops the squid) and no request timeout
+  capacity: 10,
+  maxBatchCallSize: 100,
+  requestTimeout: 30_000,
+  retryAttempts: Number.MAX_SAFE_INTEGER,
 })
 
 run(dataSource, db, async (simpleCtx) => {
@@ -226,7 +246,7 @@ run(dataSource, db, async (simpleCtx) => {
 
 ## Step 7 — Field selection
 
-The new stream fetches **only** the fields listed in `.setFields()`. The v2 processor merged a default set (`log.address`, `log.topics`, `log.data`, `block.timestamp`, `transaction.from/to/hash`) into the user's selection — the new stream does not, and TypeScript enforces it.
+The new stream fetches **only** the fields listed in `.setFields()`. The v2 processor merged a default set into the user's selection: `block.timestamp`, `log.address`, `log.topics`, `log.data`, `transaction.from`, `transaction.to`, `transaction.hash`, `trace.error`, `stateDiff.prev`, `stateDiff.next`. The new stream does not, and TypeScript enforces it. Carry every default the handler reads into `fields`.
 
 Typical minimum for a log-indexing squid:
 

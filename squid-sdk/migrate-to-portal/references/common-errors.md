@@ -284,6 +284,36 @@ The HTTP client spent its retry budget. `@subsquid/evm-stream` before 0.1.4 capp
 })
 ```
 
+### `Property 'transactHot2' is missing in type 'TypeormDatabase'` or `AssertionError: blocks must form a continues chain`
+
+The first at `tsc` on `run(dataSource, db, ...)`, the second on the first batch at run time.
+
+**Cause:** `@subsquid/typeorm-store` older than 1.7.0, kept by the lockfile. Before 1.3.0 it has no `transactHot2()`; 1.3.0 to 1.6.x require consecutive block heights, while `run()` passes only blocks with data.
+
+**Fix:** `npm i @subsquid/typeorm-store@latest`.
+
+### `Unable to process fork` right after the switch
+
+**Cause:** `@subsquid/batch-processor` 1.1.0 and earlier give up when the hot blocks `evm-processor` stored were orphaned and Portal's `previousBlocks` slice does not reach the common ancestor. The database is intact.
+
+**Fix:** upgrade `@subsquid/batch-processor` to a version newer than 1.1.0 and restart.
+
+### The squid exits on an RPC `429` or `5xx` from a contract call
+
+**Cause:** `new RpcClient({url})` defaults to `retryAttempts: 0` and no timeout; `evm-processor` retried indefinitely with a 30-second timeout.
+
+**Fix:** the `RpcClient` options in `evm-migration.md` Step 6.
+
+### RPC or fallback source delivers blocks but no logs or transactions
+
+**Cause:** up to `@subsquid/squid-sdk` 0.7.2 the RPC source compares `where` values case-sensitively; RPC nodes return lowercase hex, so a checksummed address matches nothing. Portal and `evm-processor` were case-insensitive.
+
+**Fix:** lowercase addresses, topics and sighashes in `where`, or upgrade `@subsquid/squid-sdk`.
+
+### A fallback source stays at the Portal head and never switches to RPC
+
+On a dataset with `"real_time": false`. **Cause:** in `@subsquid/squid-sdk` 0.7.2 the fallback treats Portal's empty polls at its own head as progress. **Fix:** upgrade `@subsquid/squid-sdk` past 0.7.2.
+
 ### Hot-block rollbacks crash the store
 
 Missing `supportHotBlocks: true` on the database constructor.
@@ -308,7 +338,7 @@ export type Context<Store> = BaseDataHandlerContext<BlockData, Store> & {
   _chain: { client: RpcClient }
 }
 
-const rpcClient = new RpcClient({ url: process.env.RPC_URL!, rateLimit: 100 })
+const rpcClient = new RpcClient({ url: process.env.RPC_URL!, rateLimit: 10, requestTimeout: 30_000, retryAttempts: Number.MAX_SAFE_INTEGER })
 
 run(dataSource, db, async (raw) => {
   const ctx: Context<Store> = {
