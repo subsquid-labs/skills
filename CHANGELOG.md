@@ -29,6 +29,8 @@ detail lives in the auto-generated section of each
   `network` preset, and the skill maps `evm-processor`'s trace and state-diff
   settings to the RPC source. Before, a squid that used debug state diffs lost
   them, which fails on OP-stack nodes.
+- The fallback recipe keeps the RPC endpoint's `rateLimit`, and the Portal-only
+  instructions apply only to datasets with real-time data or finalized-only squids.
 
 ## November 11, 2026 — v1.1.0
 
