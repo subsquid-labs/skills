@@ -7,6 +7,33 @@ detail lives in the auto-generated section of each
 
 ## Unreleased
 
+### Improved
+
+- `migrate-to-portal` keeps an EVM squid's database: the migrated squid continues
+  from the last block it processed instead of re-syncing, and the skill lists the
+  conditions for that and the two old-handler traps the switch can expose.
+- `migrate-to-portal` chooses the EVM data source from the dataset's metadata: Portal
+  for real-time datasets, Portal with an RPC fallback for datasets without real-time
+  data, and the RPC source for networks without a Portal dataset.
+
+### Fixed
+
+- `migrate-to-portal` upgrades `@subsquid/typeorm-store` along with the processor
+  packages. Older stores failed to compile, or crashed on the first batch.
+- The `RpcClient` for contract calls now gets the retry and timeout settings that
+  `evm-processor` used. Before, the first rate-limit response from the RPC
+  endpoint stopped the squid.
+- The list of `evm-processor` default fields to carry over now includes
+  `trace.error`, `stateDiff.prev` and `stateDiff.next`.
+- The EVM RPC and fallback examples take separate Portal and RPC URLs and a
+  `network` preset, and the skill maps `evm-processor`'s trace and state-diff
+  settings to the RPC source. Before, a squid that used debug state diffs lost
+  them, which fails on OP-stack nodes.
+- The fallback recipe keeps the RPC endpoint's `rateLimit`, and the Portal-only
+  instructions apply only to datasets with real-time data or finalized-only squids.
+- The skill no longer says an RPC source without `rpc.finalityConfirmation` always
+  uses the node's `finalized` block: a `network` preset can set its own value.
+
 ## November 11, 2026 — v1.1.0
 
 ### New

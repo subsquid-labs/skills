@@ -4,7 +4,7 @@ description: Migrate a Squid SDK indexer (EVM or Solana) from the v2 gateway to 
 license: Apache-2.0
 metadata:
   author: subsquid
-  version: "1.2.3"
+  version: "1.2.4"
   category: documentation
 ---
 
@@ -24,9 +24,11 @@ The v2 gateways are being shut down dataset by dataset, and self-hosted v2 calls
 
 2. **Confirm the dataset is served and staying.** First look the chain up in the retirement notices at <https://docs.sqd.dev/announcements> and <https://docs.sqd.dev/changelog>; a dataset can answer `200` today with an end date already announced. Then map the old `https://v2.archive.subsquid.io/network/<slug>` to Portal:
    ```bash
-   curl -sI https://portal.sqd.dev/datasets/<slug>/metadata
+   curl -s -w '\n%{http_code}\n' https://portal.sqd.dev/datasets/<slug>/metadata
+   # {"dataset":"ethereum-mainnet","aliases":[],"real_time":true,"start_block":0}
+   # 200
    ```
-   `200` means Portal serves it. `404` means the slug was renamed or retired: search <https://portal.sqd.dev/datasets>. Retired so far: 67 low-usage datasets (2026-08-20), Moonbeam, Moonriver, Polygon zkEVM and Taiko (2026-09-22), Blast and Abstract (2026-10-20), Gravity Alpha and Enjin (2026-11-04). A retired dataset has no Portal target, so the squid moves to RPC or a private Portal instead; tell the user before changing code, and tell them the end date of a dataset that has one.
+   `200` means Portal serves it; read `real_time` from the body. `404` means the slug was renamed or retired: search <https://portal.sqd.dev/datasets>. Retired so far: 67 low-usage datasets (2026-08-20), Moonbeam, Moonriver, Polygon zkEVM and Taiko (2026-09-22), Blast and Abstract (2026-10-20), Gravity Alpha and Enjin (2026-11-04). A retired dataset has no Portal target, so the squid moves to the EVM RPC source or a private Portal instead; tell the user before changing code, and tell them the end date of a dataset that has one. Note `real_time` too: a `false` dataset does not follow the chain head (on 2026-11-25, 72 of the 106 public datasets, some days behind), which decides the EVM data source in `references/evm-migration.md` Step 4.
 
 3. **Inventory direct RPC calls in the batch handler.** `new abi.Contract(ctx, header, address)` or `Multicall(...)` means the migration includes the RPC-client step.
 
@@ -36,7 +38,7 @@ The v2 gateways are being shut down dataset by dataset, and self-hosted v2 calls
 
 6. **Work on a branch,** with Node.js 22 or later. The migration rewrites imports, types and the processor entry point.
 
-Done when you can state the chain, the Portal slug that answered `200` and has no announced retirement (or the end date the user accepted), real-time or finalized-only, and whether the handler reads from RPC.
+Done when you can state the chain, the Portal slug that answered and has no announced retirement (or the end date the user accepted) with its `real_time` value, real-time or finalized-only, and whether the handler reads from RPC.
 
 ## 2. Run the chain's steps
 
@@ -69,12 +71,20 @@ Hot-block support lets the store roll back forked blocks once the indexer reache
 
 Done when all three hold.
 
-## 5. Re-sync and deploy
+## 5. Deploy on the existing database
 
-Re-sync from the start block, so the new data path runs over the squid's full history and surfaces problems before production does.
+An EVM squid keeps its database and continues from the last block it processed; a re-sync is optional. `EvmBatchProcessor` and `run()` from `@subsquid/batch-processor` share the store's state tables (`squid_processor.status`, `squid_processor.hot_block`) and identify a block by number and hash, and `@subsquid/evm-objects` produces the same entity IDs (`log.id`, `transaction.id`, ...) as `evm-processor`, so new rows line up with old ones. On start the processor logs `last processed block was N`, resumes at `N + 1`, and Portal checks the stored hash of `N`; orphaned hot blocks are rolled back like any fork.
 
-- On [SQD Cloud](https://docs.sqd.dev/en/cloud/overview), deploy into a new slot, wait for it to sync, then move the production tag to it ([zero-downtime updates](https://docs.sqd.dev/en/cloud/resources/slots-and-tags#zero-downtime-updates)).
-- When a re-sync costs too much, [re-deploy](https://docs.sqd.dev/en/cloud/reference/cli/deploy) without resetting the database (Cloud), or restart the self-hosted squid on the new code.
+Continuing requires:
+- the same database, the same `stateSchema`, and the same `supportHotBlocks` value as before;
+- `@subsquid/batch-processor` newer than 1.1.0 when the store keeps hot blocks (1.1.0 and earlier can exit with `Unable to process fork` when the old processor's last hot blocks were orphaned);
+- no schema or handler change that would need a re-sync on its own.
+- awareness of two pre-existing traps the switch can expose: a squid synced with `evm-processor` below 1.9.0 stores entity IDs as `<height>-<index>-<hash>` (new rows get `<height>-<hash>-<index>`, so code that rebuilds an old entity's ID misses it), and Portal batches are far larger than RPC ones, so a handler that registers factory children only after its batch loop drops their same-batch events. Read the handler for both before deploying.
+
+Deploy accordingly:
+- On [SQD Cloud](https://docs.sqd.dev/en/cloud/overview), [re-deploy](https://docs.sqd.dev/en/cloud/reference/cli/deploy) into the same slot without `--hard-reset`. A self-hosted squid restarts on the new code against the same database.
+- Done when the processor log shows `last processed block was N` followed by progress past `N`, with no gap in the squid's rows around `N`.
+- To validate the whole history through the new data path anyway, re-sync in a new Cloud slot and move the production tag when it catches up ([zero-downtime updates](https://docs.sqd.dev/en/cloud/resources/slots-and-tags#zero-downtime-updates)).
 - A Solana database that stored block heights in its status row needs the [re-sync workaround](https://docs.sqd.dev/en/sdk/squid-sdk/solana/guides/migration/solana-resync-workaround) before it continues on slots.
 
 ## After the migration

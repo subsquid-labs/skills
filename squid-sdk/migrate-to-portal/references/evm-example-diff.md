@@ -183,7 +183,11 @@ If the handler does direct RPC calls, also add:
 +
 +const rpcClient = new RpcClient({
 +  url: process.env.RPC_URL!,
-+  rateLimit: 100,
++  rateLimit: 10,
++  capacity: 10,
++  maxBatchCallSize: 100,
++  requestTimeout: 30_000,
++  retryAttempts: Number.MAX_SAFE_INTEGER, // evm-processor's settings; see evm-migration.md Step 6
 +})
 
  run(dataSource, db, async (simpleCtx) => {
