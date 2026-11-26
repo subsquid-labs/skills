@@ -31,6 +31,8 @@ detail lives in the auto-generated section of each
   them, which fails on OP-stack nodes.
 - The fallback recipe keeps the RPC endpoint's `rateLimit`, and the Portal-only
   instructions apply only to datasets with real-time data or finalized-only squids.
+- The skill no longer says an RPC source without `rpc.finalityConfirmation` always
+  uses the node's `finalized` block: a `network` preset can set its own value.
 
 ## November 11, 2026 — v1.1.0
 
