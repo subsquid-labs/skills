@@ -25,6 +25,10 @@ detail lives in the auto-generated section of each
   endpoint stopped the squid.
 - The list of `evm-processor` default fields to carry over now includes
   `trace.error`, `stateDiff.prev` and `stateDiff.next`.
+- The EVM RPC and fallback examples take separate Portal and RPC URLs and a
+  `network` preset, and the skill maps `evm-processor`'s trace and state-diff
+  settings to the RPC source. Before, a squid that used debug state diffs lost
+  them, which fails on OP-stack nodes.
 
 ## November 11, 2026 — v1.1.0
 

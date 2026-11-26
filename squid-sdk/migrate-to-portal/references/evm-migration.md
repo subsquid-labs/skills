@@ -150,11 +150,21 @@ const dataSource = new DataSourceBuilder()
 | v2 squid | Portal metadata | Builder |
 |---|---|---|
 | gateway + RPC (real-time) | `"real_time": true` | `DataSourceBuilder` from `@subsquid/evm-stream`, as above |
-| gateway + RPC (real-time) | `"real_time": false` | `EvmFallbackDataSourceBuilder` from `@subsquid/squid-sdk/evm/fallback`: `.setDownstreamSources([{type: 'portal', url}, {type: 'rpc', url, rpc: {finalityConfirmation: N}}])`. Portal alone stops at its own head, hours to days behind the chain. Needs `@subsquid/squid-sdk` newer than 0.7.2: in 0.7.2 the fallback never leaves a Portal parked at its own head |
+| gateway + RPC (real-time) | `"real_time": false` | `EvmFallbackDataSourceBuilder` from `@subsquid/squid-sdk/evm/fallback`: `.setDownstreamSources([{type: 'portal', url: PORTAL_URL}, {type: 'rpc', url: RPC_URL, network: '<slug>', rpc: {finalityConfirmation: N}}])`, with the Portal dataset URL and the chain RPC URL. Portal alone stops at its own head, hours to days behind the chain. Needs `@subsquid/squid-sdk` newer than 0.7.2: in 0.7.2 the fallback never leaves a Portal parked at its own head |
 | gateway only (finalized) | any | `DataSourceBuilder`, with `supportHotBlocks: false` on the store |
-| any | `404` | `EvmRpcDataSourceBuilder` from `@subsquid/squid-sdk/evm/rpc`: `.setRpc({url, rateLimit, rpc: {finalityConfirmation: N}, requestTimeout: 30_000, retryAttempts: Number.MAX_SAFE_INTEGER})` |
+| any | `404` | `EvmRpcDataSourceBuilder` from `@subsquid/squid-sdk/evm/rpc`: `.setRpc({url: RPC_URL, network: '<slug>', rateLimit, rpc: {finalityConfirmation: N}, requestTimeout: 30_000, retryAttempts: Number.MAX_SAFE_INTEGER})` |
 
 The fallback and RPC builders need `npm i @subsquid/squid-sdk @subsquid/evm-rpc @subsquid/evm-normalization`. `rpc.finalityConfirmation` carries over `.setFinalityConfirmation(N)`; without it the source uses the node's `finalized` block. A standalone RPC source neither retries nor times out by default, unlike `.setRpcEndpoint()`, hence the explicit `requestTimeout` and `retryAttempts`. Up to `@subsquid/squid-sdk` 0.7.2 the RPC source matched `where` values case-sensitively against lowercase RPC data, so write addresses, topics and sighashes in lowercase there.
+
+Both RPC paths take the same trace and state-diff settings. `network` selects a preset by slug or chain ID (for OP-stack networks it turns on `useDebugApiForStateDiffs`); without a preset and without `rpc`/`method` overrides the source runs without block validation and logs a warning. Carry the old `.setRpcDataIngestionSettings()` trace options into `method`, which is merged over the preset:
+
+| `evm-processor` (`setRpcDataIngestionSettings`) | RPC source (`method`) |
+|---|---|
+| `preferTraceApi: true` | `useTraceApi: true` |
+| `useDebugApiForStateDiffs: true` | `useDebugApiForStateDiffs: true` |
+| `debugTraceTimeout: '20s'` | `debugTraceTimeout: '20s'` |
+
+A squid that requests traces or state diffs and drops these settings falls back to the default methods (`debug_traceBlockByHash` for traces, `trace_replayBlockTransactions` for state diffs), which some nodes don't serve.
 
 Full before/after for both starting shapes (recent `setGateway`/`setRpcEndpoint`/`setFinalityConfirmation` and the older `lookupArchive` + `setDataSource({archive, chain})`) is in `evm-example-diff.md`.
 
